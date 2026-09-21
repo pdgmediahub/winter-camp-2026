@@ -3,6 +3,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let registrations = [];
 let participants = [];
+let adminNotifications = [];
 let currentAdminEmail = '';
 let currentView = 'dashboard';
 
@@ -71,18 +72,22 @@ document.addEventListener('click',e=>{
 });
 
 async function loadAll(){
-  const [{data:r,error:re},{data:p,error:pe}] = await Promise.all([
+  const [{data:r,error:re},{data:p,error:pe},{data:n,error:ne}] = await Promise.all([
     sb.from('registrations').select('*').order('created_at',{ascending:false}),
-    sb.from('registration_participants').select('*').order('participant_order',{ascending:true})
+    sb.from('registration_participants').select('*').order('participant_order',{ascending:true}),
+    sb.from('admin_notifications').select('*').order('created_at',{ascending:false}).limit(100)
   ]);
   if(re){alert('Errore nel caricamento prenotazioni: '+re.message);return}
   if(pe){console.warn('Partecipanti non caricati:',pe.message)}
+  if(ne){console.warn('Notifiche non caricate:',ne.message)}
   registrations=r||[];
   participants=p||[];
+  adminNotifications=n||[];
   populateChurchFilters();
   renderDashboard();
   renderBookings();
   renderCheckin();
+  renderNotifications();
 }
 
 function registrationPeople(r){
@@ -145,6 +150,8 @@ function filteredBookings(){
   });
 }
 function statusLabel(s){return s==='confirmed'?'Confermata':s==='cancelled'?'Annullata':'Ricevuta'}
+function paymentLabel(s){return s==='confirmed'?'Confermato':'Da verificare'}
+function roomLabel(r){return [r.hotel_name,r.room_number].filter(Boolean).join(' · ')||'Non assegnata'}
 function groupProgress(r){
   const ps=participants.filter(p=>p.registration_id===r.id);
   const done=ps.filter(p=>p.checked_in).length;
@@ -159,6 +166,9 @@ function renderBookings(){
       <td>${esc(r.church)}</td>
       <td><strong>${registrationPeople(r)}</strong><br><span class="muted">Check-in ${groupProgress(r)}</span></td>
       <td>${euros(r.deposit_amount)}</td>
+      <td><span class="payment-pill ${r.payment_status==='confirmed'?'confirmed':'pending'}">${paymentLabel(r.payment_status)}</span><br><button class="mini-btn ${r.payment_status==='confirmed'?'':'success'}" onclick="togglePayment('${r.id}')">${r.payment_status==='confirmed'?'Annulla conferma':'Conferma'}</button></td>
+      <td><span class="email-pill ${r.confirmation_email_sent_at?'sent':'pending'}">${r.confirmation_email_sent_at?'Inviata':'Non inviata'}</span><br><button class="mini-btn" onclick="resendConfirmation('${r.id}')">Reinvia PDF</button></td>
+      <td><span class="room-pill">${esc(roomLabel(r))}</span></td>
       <td><span class="status-pill ${esc(r.status||'')}">${statusLabel(r.status)}</span></td>
       <td>${r.receipt_path?`<button class="mini-btn" onclick="openReceipt('${String(r.receipt_path).replace(/'/g,"\\'")}')">Apri</button>`:'<span class="muted">—</span>'}</td>
       <td><div class="row-actions"><button class="mini-btn" onclick="editBooking('${r.id}')">Modifica</button><button class="mini-btn danger" onclick="deleteBooking('${r.id}')">Elimina</button></div></td>
@@ -167,8 +177,8 @@ function renderBookings(){
   $('bookingsCards').innerHTML=rows.map(r=>`
     <article class="booking-mobile-card">
       <div class="booking-mobile-top"><div><h4>${esc(r.first_name)} ${esc(r.last_name)}</h4><p>${esc(r.church)} · ${esc(r.phone)}</p></div><span class="status-pill ${esc(r.status||'')}">${statusLabel(r.status)}</span></div>
-      <div class="booking-mobile-grid"><div><span>Persone</span><strong>${registrationPeople(r)}</strong></div><div><span>Check-in</span><strong>${groupProgress(r)}</strong></div><div><span>Acconto</span><strong>${euros(r.deposit_amount)}</strong></div><div><span>Data</span><strong>${fmtDate(r.created_at)}</strong></div></div>
-      <div class="booking-mobile-actions">${r.receipt_path?`<button class="mini-btn" onclick="openReceipt('${String(r.receipt_path).replace(/'/g,"\\'")}')">Distinta</button>`:''}<button class="mini-btn" onclick="editBooking('${r.id}')">Modifica</button><button class="mini-btn danger" onclick="deleteBooking('${r.id}')">Elimina</button></div>
+      <div class="booking-mobile-grid"><div><span>Persone</span><strong>${registrationPeople(r)}</strong></div><div><span>Check-in</span><strong>${groupProgress(r)}</strong></div><div><span>Acconto</span><strong>${euros(r.deposit_amount)}</strong></div><div><span>Pagamento</span><strong>${paymentLabel(r.payment_status)}</strong></div><div><span>Email</span><strong>${r.confirmation_email_sent_at?'Inviata':'Non inviata'}</strong></div><div><span>Hotel / Camera</span><strong>${esc(roomLabel(r))}</strong></div></div>
+      <div class="booking-mobile-actions">${r.receipt_path?`<button class="mini-btn" onclick="openReceipt('${String(r.receipt_path).replace(/'/g,"\\'")}')">Distinta</button>`:''}<button class="mini-btn" onclick="resendConfirmation('${r.id}')">Reinvia PDF</button><button class="mini-btn ${r.payment_status==='confirmed'?'':'success'}" onclick="togglePayment('${r.id}')">${r.payment_status==='confirmed'?'Pagamento ✓':'Conferma pagamento'}</button><button class="mini-btn" onclick="editBooking('${r.id}')">Modifica</button><button class="mini-btn danger" onclick="deleteBooking('${r.id}')">Elimina</button></div>
     </article>`).join('');
 }
 [searchInput,$('bookingChurchFilter'),$('bookingStatusFilter')].forEach(el=>el.addEventListener(el.tagName==='INPUT'?'input':'change',renderBookings));
@@ -206,7 +216,7 @@ function renderCheckin(){
     const allPs=participants.filter(p=>p.registration_id===r.id);
     const done=allPs.filter(p=>p.checked_in).length;
     return `<article class="group-card">
-      <div class="group-head"><div><strong>${esc(r.first_name)} ${esc(r.last_name)}</strong><span>${esc(r.church)} · ${registrationPeople(r)} ${registrationPeople(r)===1?'persona':'persone'}</span></div><div class="group-progress">${done}/${allPs.length||registrationPeople(r)} presenti</div></div>
+      <div class="group-head"><div><strong>${esc(r.first_name)} ${esc(r.last_name)}</strong><span>${esc(r.church)} · ${registrationPeople(r)} ${registrationPeople(r)===1?'persona':'persone'} · ${esc(roomLabel(r))}</span></div><div class="group-progress">${done}/${allPs.length||registrationPeople(r)} presenti</div></div>
       ${ps.map(p=>participantHtml(p)).join('')||'<div style="padding:15px 17px" class="muted">Nessun partecipante corrisponde al filtro.</div>'}
     </article>`;
   }).join('') || '<div class="panel-card"><p class="muted">Nessun gruppo trovato.</p></div>';
@@ -241,7 +251,7 @@ function updateModalSummary(){
   const n=Number($('mGuestCount').value||0);
   $('mPeopleTotal').textContent=n;
   $('mDeposit').textContent=euros(n*20);
-  $('mGuestDetails').required=n>0;
+  $('mGuestDetails').required=n>1;
 }
 $('mGuestCount').addEventListener('change',updateModalSummary);
 
@@ -251,8 +261,8 @@ function openBookingModal(mode='new',r=null){
   $('modalTitle').textContent=mode==='edit'?'Modifica prenotazione':'Nuova prenotazione';
   $('sendEmailRow').classList.toggle('hidden2',mode==='edit');
   if(r){
-    $('mFirstName').value=r.first_name||'';$('mLastName').value=r.last_name||'';$('mEmail').value=r.email||'';$('mPhone').value=r.phone||'';$('mMinister').value=r.is_minister?'si':'no';$('mChurch').value=r.church||'';$('mGuestCount').value=String(r.guest_count||1);$('mStatus').value=r.status||'ricevuta';$('mGuestDetails').value=r.guest_details||'';
-  }else{$('mGuestCount').value='1';$('mStatus').value='ricevuta';}
+    $('mFirstName').value=r.first_name||'';$('mLastName').value=r.last_name||'';$('mEmail').value=r.email||'';$('mPhone').value=r.phone||'';$('mMinister').value=r.is_minister?'si':'no';$('mChurch').value=r.church||'';$('mGuestCount').value=String(r.guest_count||1);$('mStatus').value=r.status||'ricevuta';$('mPaymentStatus').value=r.payment_status||'pending';$('mHotelName').value=r.hotel_name||'';$('mRoomNumber').value=r.room_number||'';$('mGuestDetails').value=r.guest_details||'';
+  }else{$('mGuestCount').value='1';$('mStatus').value='ricevuta';$('mPaymentStatus').value='pending';$('mHotelName').value='';$('mRoomNumber').value='';}
   updateModalSummary();
   $('bookingModal').classList.remove('hidden2');
   setTimeout(()=>$('mFirstName').focus(),50);
@@ -271,8 +281,10 @@ $('adminBookingForm').addEventListener('submit',async e=>{
   const guestCount=Number($('mGuestCount').value||0);
   const details=$('mGuestDetails').value.trim();
   if(guestCount>1 && !details){setMsg($('modalMessage'),'error','Inserisci i dati degli altri partecipanti, uno per riga.');return}
+  const original=id?registrations.find(x=>x.id===id):null;
+  const paymentStatus=$('mPaymentStatus').value;
   const payload={
-    first_name:$('mFirstName').value.trim(),last_name:$('mLastName').value.trim(),email:$('mEmail').value.trim().toLowerCase(),phone:$('mPhone').value.trim(),is_minister:$('mMinister').value==='si',church:$('mChurch').value.trim(),guest_count:guestCount,guest_details:guestCount>1?details:null,deposit_amount:guestCount*20,status:$('mStatus').value,updated_at:new Date().toISOString()
+    first_name:$('mFirstName').value.trim(),last_name:$('mLastName').value.trim(),email:$('mEmail').value.trim().toLowerCase(),phone:$('mPhone').value.trim(),is_minister:$('mMinister').value==='si',church:$('mChurch').value.trim(),guest_count:guestCount,guest_details:guestCount>1?details:null,deposit_amount:guestCount*20,status:$('mStatus').value,payment_status:paymentStatus,payment_confirmed_at:paymentStatus==='confirmed'?(original?.payment_confirmed_at||new Date().toISOString()):null,payment_confirmed_by:paymentStatus==='confirmed'?(original?.payment_confirmed_by||currentAdminEmail):null,hotel_name:$('mHotelName').value.trim()||null,room_number:$('mRoomNumber').value.trim()||null,updated_at:new Date().toISOString()
   };
   $('saveBookingButton').disabled=true;$('saveBookingButton').textContent='Salvataggio…';
   let savedId=id;
@@ -283,14 +295,39 @@ $('adminBookingForm').addEventListener('submit',async e=>{
     const result=await sb.from('registrations').insert(payload).select('id').single();error=result.error;savedId=result.data?.id;
   }
   if(error){setMsg($('modalMessage'),'error','Errore: '+error.message);$('saveBookingButton').disabled=false;$('saveBookingButton').textContent='Salva prenotazione';return}
-  if(!id && $('mSendEmail').checked && savedId){await sendConfirmationEmail(savedId);}
+  if(!id && savedId){await invokeConfirmationFunction(savedId,{sendUser:$('mSendEmail').checked,notifyAdmin:true});}
   $('saveBookingButton').disabled=false;$('saveBookingButton').textContent='Salva prenotazione';
   closeBookingModal();await loadAll();
 });
 
-async function sendConfirmationEmail(registrationId){
-  try{await fetch(`${SUPABASE_URL}/functions/v1/send-booking-confirmation`,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':`Bearer ${SUPABASE_ANON_KEY}`},body:JSON.stringify({registration_id:registrationId})});}catch(e){console.error(e)}
+async function invokeConfirmationFunction(registrationId,{force=false,sendUser=true,notifyAdmin=true}={}){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const token=session?.access_token||SUPABASE_ANON_KEY;
+    const response=await fetch(`${SUPABASE_URL}/functions/v1/send-booking-confirmation`,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':`Bearer ${token}`},body:JSON.stringify({registration_id:registrationId,force,send_user:sendUser,notify_admin:notifyAdmin})});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error||'Invio non riuscito');
+    return data;
+  }catch(e){console.error(e);throw e}
 }
+async function resendConfirmation(id){
+  const r=registrations.find(x=>x.id===id); if(!r)return;
+  if(!confirm(`Reinviare il PDF di prenotazione a ${r.email}?`))return;
+  try{await invokeConfirmationFunction(id,{force:true,sendUser:true,notifyAdmin:false});showToast('PDF reinviato via email.');await loadAll();}
+  catch(e){alert('Invio non riuscito: '+e.message)}
+}
+window.resendConfirmation=resendConfirmation;
+
+async function togglePayment(id){
+  const r=registrations.find(x=>x.id===id);if(!r)return;
+  const confirmPayment=r.payment_status!=='confirmed';
+  const patch=confirmPayment?{payment_status:'confirmed',payment_confirmed_at:new Date().toISOString(),payment_confirmed_by:currentAdminEmail}:{payment_status:'pending',payment_confirmed_at:null,payment_confirmed_by:null};
+  const {error}=await sb.from('registrations').update(patch).eq('id',id);
+  if(error){alert('Errore pagamento: '+error.message);return}
+  showToast(confirmPayment?'Pagamento confermato.':'Conferma pagamento annullata.');
+  await loadAll();
+}
+window.togglePayment=togglePayment;
 
 async function deleteBooking(id){
   const r=registrations.find(x=>x.id===id);if(!r)return;
@@ -304,21 +341,64 @@ window.deleteBooking=deleteBooking;
 
 $('exportButton').addEventListener('click',()=>{
   const bookingRows=registrations.map(r=>({
-    'Data prenotazione':fmtDate(r.created_at),'Nome':r.first_name,'Cognome':r.last_name,'Email':r.email,'Cellulare':r.phone,'Ministro':r.is_minister?'Sì':'No','Chiesa di appartenenza':r.church,'Persone totali':registrationPeople(r),'Altri partecipanti':r.guest_details||'','Acconto €':Number(r.deposit_amount||0),'Stato':statusLabel(r.status),'Origine':r.source==='manual'?'Manuale':'Online','Email PDF inviata':r.confirmation_email_sent_at?fmtDate(r.confirmation_email_sent_at):'No','Distinta':r.receipt_path||''
+    'Data prenotazione':fmtDate(r.created_at),'Nome':r.first_name,'Cognome':r.last_name,'Email':r.email,'Cellulare':r.phone,'Ministro':r.is_minister?'Sì':'No','Chiesa di appartenenza':r.church,'Persone totali':registrationPeople(r),'Altri partecipanti':r.guest_details||'','Acconto €':Number(r.deposit_amount||0),'Stato':statusLabel(r.status),'Origine':r.source==='manual'?'Manuale':'Online','Email PDF inviata':r.confirmation_email_sent_at?fmtDate(r.confirmation_email_sent_at):'No','N. invii email':Number(r.confirmation_email_count||0),'Pagamento':paymentLabel(r.payment_status),'Pagamento confermato il':r.payment_confirmed_at?fmtDate(r.payment_confirmed_at):'','Confermato da':r.payment_confirmed_by||'','Hotel':r.hotel_name||'','Camera':r.room_number||'','Distinta':r.receipt_path||''
   }));
   const participantRows=participants.map(p=>{
     const r=registrations.find(x=>x.id===p.registration_id);
-    return {'Famiglia / Referente':r?`${r.first_name} ${r.last_name}`:'','Partecipante':p.participant_name,'Data di nascita':p.birth_date?new Date(p.birth_date+'T00:00:00').toLocaleDateString('it-IT'):'','Chiesa':r?.church||'','Check-in':p.checked_in?'PRESENTE':'ASSENTE','Orario arrivo':p.checked_in_at?fmtDate(p.checked_in_at):'','Operatore':p.checked_in_by||'','Da verificare':p.issue?'Sì':'No','Note':p.notes||''};
+    return {'Famiglia / Referente':r?`${r.first_name} ${r.last_name}`:'','Partecipante':p.participant_name,'Data di nascita':p.birth_date?new Date(p.birth_date+'T00:00:00').toLocaleDateString('it-IT'):'','Chiesa':r?.church||'','Hotel':r?.hotel_name||'','Camera':r?.room_number||'','Check-in':p.checked_in?'PRESENTE':'ASSENTE','Orario arrivo':p.checked_in_at?fmtDate(p.checked_in_at):'','Operatore':p.checked_in_by||'','Da verificare':p.issue?'Sì':'No','Note':p.notes||''};
   });
   const wb=XLSX.utils.book_new();
-  const ws1=XLSX.utils.json_to_sheet(bookingRows);ws1['!cols']=[{wch:18},{wch:18},{wch:18},{wch:28},{wch:18},{wch:10},{wch:28},{wch:12},{wch:45},{wch:14},{wch:14},{wch:14},{wch:12},{wch:20},{wch:35}];XLSX.utils.book_append_sheet(wb,ws1,'Prenotazioni');
-  const ws2=XLSX.utils.json_to_sheet(participantRows);ws2['!cols']=[{wch:25},{wch:28},{wch:16},{wch:28},{wch:12},{wch:20},{wch:28},{wch:14},{wch:12},{wch:30}];XLSX.utils.book_append_sheet(wb,ws2,'Check-in Hotel');
+  const ws1=XLSX.utils.json_to_sheet(bookingRows);ws1['!cols']=Array(22).fill({wch:20});XLSX.utils.book_append_sheet(wb,ws1,'Prenotazioni');
+  const ws2=XLSX.utils.json_to_sheet(participantRows);ws2['!cols']=Array(12).fill({wch:20});XLSX.utils.book_append_sheet(wb,ws2,'Check-in Hotel');
   XLSX.writeFile(wb,`Winter_Camp_Gestionale_${new Date().toISOString().slice(0,10)}.xlsx`);
 });
 
-sb.channel('wintercamp-live')
+function showToast(text){
+  const el=$('adminToast'); if(!el)return;
+  el.textContent=text;el.classList.remove('hidden2');
+  clearTimeout(showToast._t);showToast._t=setTimeout(()=>el.classList.add('hidden2'),4200);
+}
+function renderNotifications(){
+  const unread=adminNotifications.filter(n=>!n.read_at).length;
+  $('notificationBadge').textContent=unread>99?'99+':String(unread);
+  $('notificationBadge').classList.toggle('hidden2',unread===0);
+  $('notificationList').innerHTML=adminNotifications.map(n=>`<article class="notification-item ${n.read_at?'':'unread'}" onclick="openNotification('${n.id}','${n.registration_id||''}')"><strong>${esc(n.title)}</strong><p>${esc(n.body)}</p><time>${fmtDate(n.created_at)}</time></article>`).join('')||'<p class="muted">Nessuna notifica.</p>';
+}
+async function openNotification(id,registrationId){
+  await sb.from('admin_notifications').update({read_at:new Date().toISOString()}).eq('id',id);
+  if(registrationId){switchView('bookings');const r=registrations.find(x=>x.id===registrationId);if(r)setTimeout(()=>editBooking(registrationId),80)}
+  $('notificationDrawer').classList.add('hidden2');
+  await loadAll();
+}
+window.openNotification=openNotification;
+$('notificationButton').addEventListener('click',async()=>{
+  $('notificationDrawer').classList.toggle('hidden2');
+  if('Notification' in window && Notification.permission==='default'){try{await Notification.requestPermission()}catch{}}
+});
+$('closeNotifications').addEventListener('click',()=>$('notificationDrawer').classList.add('hidden2'));
+$('enableBrowserNotifications').addEventListener('click',async()=>{
+  if(!('Notification' in window)){alert('Il browser non supporta le notifiche desktop.');return}
+  const result=await Notification.requestPermission();
+  showToast(result==='granted'?'Notifiche browser attivate.':'Permesso notifiche non concesso.');
+});
+$('markAllRead').addEventListener('click',async()=>{
+  const ids=adminNotifications.filter(n=>!n.read_at).map(n=>n.id);
+  if(!ids.length)return;
+  await sb.from('admin_notifications').update({read_at:new Date().toISOString()}).in('id',ids);
+  await loadAll();
+});
+function notifyNewRegistration(n){
+  showToast(`${n.title}: ${n.body}`);
+  if('Notification' in window && Notification.permission==='granted'){
+    try{new Notification(n.title,{body:n.body,tag:n.registration_id||n.id})}catch{}
+  }
+}
+
+sb.channel('wintercamp-live-v4')
   .on('postgres_changes',{event:'*',schema:'public',table:'registrations'},()=>loadAll())
   .on('postgres_changes',{event:'*',schema:'public',table:'registration_participants'},()=>loadAll())
+  .on('postgres_changes',{event:'INSERT',schema:'public',table:'admin_notifications'},payload=>{notifyNewRegistration(payload.new);loadAll()})
+  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'admin_notifications'},()=>loadAll())
   .subscribe();
 
 checkAdmin();

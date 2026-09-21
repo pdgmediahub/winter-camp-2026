@@ -21,6 +21,13 @@ create table if not exists public.registrations (
   status text not null default 'ricevuta' check (status in ('ricevuta','confirmed','cancelled')),
   source text not null default 'online' check (source in ('online','manual')),
   confirmation_email_sent_at timestamptz,
+  confirmation_email_count integer not null default 0,
+  admin_notification_email_sent_at timestamptz,
+  payment_status text not null default 'pending' check (payment_status in ('pending','confirmed')),
+  payment_confirmed_at timestamptz,
+  payment_confirmed_by text,
+  hotel_name text,
+  room_number text,
   constraint guests_need_details check ((guest_count <= 1) or (guest_details is not null and length(trim(guest_details)) > 0))
 );
 
@@ -28,11 +35,54 @@ create table if not exists public.registrations (
 alter table public.registrations add column if not exists updated_at timestamptz not null default now();
 alter table public.registrations add column if not exists source text not null default 'online';
 alter table public.registrations add column if not exists confirmation_email_sent_at timestamptz;
+alter table public.registrations add column if not exists confirmation_email_count integer not null default 0;
+alter table public.registrations add column if not exists admin_notification_email_sent_at timestamptz;
+alter table public.registrations add column if not exists payment_status text not null default 'pending';
+alter table public.registrations add column if not exists payment_confirmed_at timestamptz;
+alter table public.registrations add column if not exists payment_confirmed_by text;
+alter table public.registrations add column if not exists hotel_name text;
+alter table public.registrations add column if not exists room_number text;
 alter table public.registrations alter column receipt_path drop not null;
 
 create table if not exists public.admin_users (
   email text primary key
 );
+
+-- Centro notifiche del gestionale. Ogni nuova prenotazione genera una notifica persistente.
+create table if not exists public.admin_notifications (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  type text not null default 'new_registration',
+  title text not null,
+  body text not null,
+  registration_id uuid references public.registrations(id) on delete cascade,
+  read_at timestamptz
+);
+create index if not exists idx_admin_notifications_created on public.admin_notifications(created_at desc);
+create index if not exists idx_admin_notifications_unread on public.admin_notifications(read_at) where read_at is null;
+
+create or replace function public.create_registration_admin_notification()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.admin_notifications(type,title,body,registration_id)
+  values(
+    'new_registration',
+    'Nuova prenotazione',
+    trim(new.first_name || ' ' || new.last_name) || ' · ' || new.guest_count || case when new.guest_count = 1 then ' persona' else ' persone' end || ' · ' || new.church,
+    new.id
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_registration_admin_notification on public.registrations;
+create trigger trg_registration_admin_notification
+after insert on public.registrations
+for each row execute function public.create_registration_admin_notification();
 
 -- Una riga per ogni PERSONA che deve effettuare il check-in in hotel.
 create table if not exists public.registration_participants (
@@ -218,6 +268,7 @@ end $$;
 
 alter table public.registrations enable row level security;
 alter table public.admin_users enable row level security;
+alter table public.admin_notifications enable row level security;
 alter table public.registration_participants enable row level security;
 
 -- Modulo pubblico: può solo INSERIRE prenotazioni.
@@ -260,6 +311,26 @@ on public.admin_users for select
 to authenticated
 using (lower(email)=lower(auth.jwt()->>'email'));
 
+-- Notifiche gestionali: solo admin.
+drop policy if exists "admins can read notifications" on public.admin_notifications;
+create policy "admins can read notifications"
+on public.admin_notifications for select
+to authenticated
+using (exists(select 1 from public.admin_users a where lower(a.email)=lower(auth.jwt()->>'email')));
+
+drop policy if exists "admins can update notifications" on public.admin_notifications;
+create policy "admins can update notifications"
+on public.admin_notifications for update
+to authenticated
+using (exists(select 1 from public.admin_users a where lower(a.email)=lower(auth.jwt()->>'email')))
+with check (exists(select 1 from public.admin_users a where lower(a.email)=lower(auth.jwt()->>'email')));
+
+drop policy if exists "admins can delete notifications" on public.admin_notifications;
+create policy "admins can delete notifications"
+on public.admin_notifications for delete
+to authenticated
+using (exists(select 1 from public.admin_users a where lower(a.email)=lower(auth.jwt()->>'email')));
+
 -- Partecipanti / check-in: solo admin.
 drop policy if exists "admins can read participants" on public.registration_participants;
 create policy "admins can read participants"
@@ -292,6 +363,9 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table public.registration_participants;
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.admin_notifications;
 exception when duplicate_object then null; end $$;
 
 -- STORAGE: bucket privato per le distinte.

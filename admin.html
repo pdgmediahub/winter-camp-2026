@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260921-2035" />
-  <link rel="stylesheet" href="admin.css?v=20260921-2045" />
+  <link rel="stylesheet" href="styles.css?v=20260921-v4" />
+  <link rel="stylesheet" href="admin.css?v=20260921-v4" />
 </head>
 <body class="admin-body">
   <section id="loginView" class="login-screen">
@@ -49,6 +49,7 @@
           <h2 id="viewTitle">Dashboard</h2>
         </div>
         <div class="top-actions">
+          <button id="notificationButton" class="notification-button" title="Notifiche"><span>🔔</span><b id="notificationBadge" class="notification-badge hidden2">0</b></button>
           <button id="refreshButton" class="ghost-button">Aggiorna</button>
           <button id="exportButton" class="ghost-button">Scarica Excel</button>
           <button id="newBookingButton" class="accent-button">+ Nuova prenotazione</button>
@@ -93,7 +94,7 @@
         </div>
         <div id="bookingsCards" class="mobile-bookings"></div>
         <div class="table-card desktop-table"><div class="table-wrap"><table>
-          <thead><tr><th>Prenotazione</th><th>Contatti</th><th>Chiesa</th><th>Persone</th><th>Acconto</th><th>Stato</th><th>Distinta</th><th></th></tr></thead>
+          <thead><tr><th>Prenotazione</th><th>Contatti</th><th>Chiesa</th><th>Persone</th><th>Acconto</th><th>Pagamento</th><th>Email</th><th>Hotel / Camera</th><th>Stato</th><th>Distinta</th><th></th></tr></thead>
           <tbody id="tableBody"></tbody>
         </table></div></div>
       </section>
@@ -127,6 +128,9 @@
           <div class="field"><label>Chiesa *</label><input id="mChurch" required /></div>
           <div class="field"><label>Persone totali *</label><select id="mGuestCount" required></select><small>Compreso il referente della prenotazione.</small></div>
           <div class="field"><label>Stato</label><select id="mStatus"><option value="ricevuta">Ricevuta</option><option value="confirmed">Confermata</option><option value="cancelled">Annullata</option></select></div>
+          <div class="field"><label>Pagamento</label><select id="mPaymentStatus"><option value="pending">Da verificare</option><option value="confirmed">Confermato</option></select></div>
+          <div class="field"><label>Hotel</label><input id="mHotelName" placeholder="Es. Hotel ..." /></div>
+          <div class="field"><label>Camera</label><input id="mRoomNumber" placeholder="Es. 204 / Tripla" /></div>
         </div>
         <div class="field"><label>Altri partecipanti</label><textarea id="mGuestDetails" rows="6" placeholder="Mario Rossi, 01/01/2000&#10;Luisa Bianchi, 15/05/2010"></textarea><small>Una persona per riga, senza ripetere il referente. Il gestionale creerà automaticamente le righe individuali per il check-in.</small></div>
         <div class="modal-summary"><span>Persone totali <strong id="mPeopleTotal">0</strong></span><span>Acconto <strong id="mDeposit">€0,00</strong></span></div>
@@ -137,9 +141,17 @@
     </div>
   </div>
 
+
+  <aside id="notificationDrawer" class="notification-drawer hidden2" aria-label="Centro notifiche">
+    <div class="notification-drawer-head"><div><span class="section-kicker">CENTRO NOTIFICHE</span><h3>Notifiche</h3></div><button id="closeNotifications" class="icon-button">×</button></div>
+    <div class="notification-drawer-actions"><button id="enableBrowserNotifications" class="ghost-button">Attiva notifiche browser</button><button id="markAllRead" class="text-button">Segna tutte lette</button></div>
+    <div id="notificationList" class="notification-list"></div>
+  </aside>
+  <div id="adminToast" class="admin-toast hidden2" role="status" aria-live="polite"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="config.js?v=20260921-2035"></script>
-  <script src="admin.js?v=20260921-2045"></script>
+  <script src="config.js?v=20260921-v4"></script>
+  <script src="admin.js?v=20260921-v4"></script>
 </body>
 </html>
