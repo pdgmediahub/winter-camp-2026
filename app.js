@@ -20,7 +20,7 @@ function updateGuests(){
   const n = Number(guestCount.value || 0);
   const people = n;
   amountBox.querySelector('strong').textContent = `€${(people * 20).toFixed(2).replace('.', ',')}`;
-  if(n > 0){
+  if(n > 1){
     guestDetailsWrap.classList.remove('hidden');
     guestDetails.required = true;
   } else {
@@ -87,7 +87,7 @@ form.addEventListener('submit', async (e) => {
       is_minister: document.getElementById('minister').value === 'si',
       church: document.getElementById('church').value.trim(),
       guest_count: nGuests,
-      guest_details: nGuests > 0 ? guestDetails.value.trim() : null,
+      guest_details: nGuests > 1 ? guestDetails.value.trim() : null,
       receipt_path: uploadedPath,
       deposit_amount: nGuests * 20
     };

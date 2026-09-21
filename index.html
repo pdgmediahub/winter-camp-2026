@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=20260921-2045" />
 </head>
 <body>
   <main class="site-shell">
@@ -89,16 +89,15 @@
         <div class="form-intro compact">
           <div>
             <span class="section-number">02</span>
-            <h2>Ospiti</h2>
+            <h2>Partecipanti</h2>
           </div>
         </div>
 
         <div class="grid two guest-row">
           <div class="field">
-            <label for="guestCount">Numero di ospiti <span class="required">*</span></label>
+            <label for="guestCount">Numero totale di persone <span class="required">*</span></label>
             <select id="guestCount" name="guestCount" required>
               <option value="" selected disabled>Seleziona</option>
-              <option value="0">0</option>
               <option value="1">1</option>
               <option value="2">2</option>
               <option value="3">3</option>
@@ -110,6 +109,7 @@
               <option value="9">9</option>
               <option value="10">10</option>
             </select>
+            <small>Compreso chi sta effettuando la prenotazione.</small>
           </div>
           <div class="amount-line" id="amountBox" aria-live="polite">
             <span>Acconto previsto</span>
@@ -119,9 +119,9 @@
         </div>
 
         <div class="field hidden" id="guestDetailsWrap">
-          <label for="guestDetails">Nome, Cognome e Data di nascita degli ospiti <span class="required">*</span></label>
+          <label for="guestDetails">Nome, Cognome e Data di nascita degli altri partecipanti <span class="required">*</span></label>
           <textarea id="guestDetails" name="guestDetails" rows="6" placeholder="Mario Rossi, 01/01/2000"></textarea>
-          <small>Inserisci un ospite per riga.</small>
+          <small>Inserisci una persona per riga, senza ripetere chi sta compilando il modulo.</small>
         </div>
 
         <div class="divider"></div>
@@ -190,7 +190,7 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script src="app.js"></script>
+  <script src="config.js?v=20260921-2035"></script>
+  <script src="app.js?v=20260921-2045"></script>
 </body>
 </html>

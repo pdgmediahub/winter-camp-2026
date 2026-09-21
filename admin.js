@@ -236,7 +236,7 @@ async function toggleIssue(id,value){
 }
 window.toggleCheckin=toggleCheckin;window.toggleIssue=toggleIssue;
 
-for(let i=0;i<=10;i++) $('mGuestCount').insertAdjacentHTML('beforeend',`<option value="${i}">${i}</option>`);
+for(let i=1;i<=10;i++) $('mGuestCount').insertAdjacentHTML('beforeend',`<option value="${i}">${i}</option>`);
 function updateModalSummary(){
   const n=Number($('mGuestCount').value||0);
   $('mPeopleTotal').textContent=n;
@@ -251,8 +251,8 @@ function openBookingModal(mode='new',r=null){
   $('modalTitle').textContent=mode==='edit'?'Modifica prenotazione':'Nuova prenotazione';
   $('sendEmailRow').classList.toggle('hidden2',mode==='edit');
   if(r){
-    $('mFirstName').value=r.first_name||'';$('mLastName').value=r.last_name||'';$('mEmail').value=r.email||'';$('mPhone').value=r.phone||'';$('mMinister').value=r.is_minister?'si':'no';$('mChurch').value=r.church||'';$('mGuestCount').value=String(r.guest_count||0);$('mStatus').value=r.status||'ricevuta';$('mGuestDetails').value=r.guest_details||'';
-  }else{$('mGuestCount').value='0';$('mStatus').value='ricevuta';}
+    $('mFirstName').value=r.first_name||'';$('mLastName').value=r.last_name||'';$('mEmail').value=r.email||'';$('mPhone').value=r.phone||'';$('mMinister').value=r.is_minister?'si':'no';$('mChurch').value=r.church||'';$('mGuestCount').value=String(r.guest_count||1);$('mStatus').value=r.status||'ricevuta';$('mGuestDetails').value=r.guest_details||'';
+  }else{$('mGuestCount').value='1';$('mStatus').value='ricevuta';}
   updateModalSummary();
   $('bookingModal').classList.remove('hidden2');
   setTimeout(()=>$('mFirstName').focus(),50);
@@ -270,9 +270,9 @@ $('adminBookingForm').addEventListener('submit',async e=>{
   const id=$('editRegistrationId').value;
   const guestCount=Number($('mGuestCount').value||0);
   const details=$('mGuestDetails').value.trim();
-  if(guestCount>0 && !details){setMsg($('modalMessage'),'error','Inserisci i dati degli ospiti, uno per riga.');return}
+  if(guestCount>1 && !details){setMsg($('modalMessage'),'error','Inserisci i dati degli altri partecipanti, uno per riga.');return}
   const payload={
-    first_name:$('mFirstName').value.trim(),last_name:$('mLastName').value.trim(),email:$('mEmail').value.trim().toLowerCase(),phone:$('mPhone').value.trim(),is_minister:$('mMinister').value==='si',church:$('mChurch').value.trim(),guest_count:guestCount,guest_details:guestCount?details:null,deposit_amount:guestCount*20,status:$('mStatus').value,updated_at:new Date().toISOString()
+    first_name:$('mFirstName').value.trim(),last_name:$('mLastName').value.trim(),email:$('mEmail').value.trim().toLowerCase(),phone:$('mPhone').value.trim(),is_minister:$('mMinister').value==='si',church:$('mChurch').value.trim(),guest_count:guestCount,guest_details:guestCount>1?details:null,deposit_amount:guestCount*20,status:$('mStatus').value,updated_at:new Date().toISOString()
   };
   $('saveBookingButton').disabled=true;$('saveBookingButton').textContent='Salvataggio…';
   let savedId=id;
@@ -304,7 +304,7 @@ window.deleteBooking=deleteBooking;
 
 $('exportButton').addEventListener('click',()=>{
   const bookingRows=registrations.map(r=>({
-    'Data prenotazione':fmtDate(r.created_at),'Nome':r.first_name,'Cognome':r.last_name,'Email':r.email,'Cellulare':r.phone,'Ministro':r.is_minister?'Sì':'No','Chiesa di appartenenza':r.church,'Numero ospiti':r.guest_count,'Dati ospiti':r.guest_details||'','Persone totali':registrationPeople(r),'Acconto €':Number(r.deposit_amount||0),'Stato':statusLabel(r.status),'Origine':r.source==='manual'?'Manuale':'Online','Email PDF inviata':r.confirmation_email_sent_at?fmtDate(r.confirmation_email_sent_at):'No','Distinta':r.receipt_path||''
+    'Data prenotazione':fmtDate(r.created_at),'Nome':r.first_name,'Cognome':r.last_name,'Email':r.email,'Cellulare':r.phone,'Ministro':r.is_minister?'Sì':'No','Chiesa di appartenenza':r.church,'Persone totali':registrationPeople(r),'Altri partecipanti':r.guest_details||'','Acconto €':Number(r.deposit_amount||0),'Stato':statusLabel(r.status),'Origine':r.source==='manual'?'Manuale':'Online','Email PDF inviata':r.confirmation_email_sent_at?fmtDate(r.confirmation_email_sent_at):'No','Distinta':r.receipt_path||''
   }));
   const participantRows=participants.map(p=>{
     const r=registrations.find(x=>x.id===p.registration_id);
