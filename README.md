@@ -129,3 +129,6 @@ Luisa Bianchi, 15/05/2010
 ```
 
 Il gestionale usa queste righe per creare automaticamente i singoli partecipanti del gruppo.
+
+## Correzione conteggio acconto
+In questa versione `guest_count` è il numero di persone prenotate ai fini dell'acconto: 2 persone = €40,00. Il referente che compila il modulo non viene aggiunto automaticamente al totale o al check-in.

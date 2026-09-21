@@ -18,7 +18,7 @@ function showMessage(type, text){
 
 function updateGuests(){
   const n = Number(guestCount.value || 0);
-  const people = n + 1;
+  const people = n;
   amountBox.querySelector('strong').textContent = `€${(people * 20).toFixed(2).replace('.', ',')}`;
   if(n > 0){
     guestDetailsWrap.classList.remove('hidden');
@@ -89,7 +89,7 @@ form.addEventListener('submit', async (e) => {
       guest_count: nGuests,
       guest_details: nGuests > 0 ? guestDetails.value.trim() : null,
       receipt_path: uploadedPath,
-      deposit_amount: (nGuests + 1) * 20
+      deposit_amount: nGuests * 20
     };
 
     const { data: inserted, error: insertError } = await supabaseClient

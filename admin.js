@@ -85,7 +85,7 @@ async function loadAll(){
   renderCheckin();
 }
 
-function registrationPeople(r){return 1+Number(r.guest_count||0)}
+function registrationPeople(r){return Number(r.guest_count||0)}
 function activeRegistrations(){return registrations.filter(r=>r.status!=='cancelled')}
 function activeParticipants(){
   const activeIds=new Set(activeRegistrations().map(r=>r.id));
@@ -227,10 +227,10 @@ window.toggleCheckin=toggleCheckin;window.toggleIssue=toggleIssue;
 
 for(let i=0;i<=10;i++) $('mGuestCount').insertAdjacentHTML('beforeend',`<option value="${i}">${i}</option>`);
 function updateModalSummary(){
-  const n=Number($('mGuestCount').value||0)+1;
+  const n=Number($('mGuestCount').value||0);
   $('mPeopleTotal').textContent=n;
   $('mDeposit').textContent=euros(n*20);
-  $('mGuestDetails').required=n>1;
+  $('mGuestDetails').required=n>0;
 }
 $('mGuestCount').addEventListener('change',updateModalSummary);
 
@@ -261,7 +261,7 @@ $('adminBookingForm').addEventListener('submit',async e=>{
   const details=$('mGuestDetails').value.trim();
   if(guestCount>0 && !details){setMsg($('modalMessage'),'error','Inserisci i dati degli ospiti, uno per riga.');return}
   const payload={
-    first_name:$('mFirstName').value.trim(),last_name:$('mLastName').value.trim(),email:$('mEmail').value.trim().toLowerCase(),phone:$('mPhone').value.trim(),is_minister:$('mMinister').value==='si',church:$('mChurch').value.trim(),guest_count:guestCount,guest_details:guestCount?details:null,deposit_amount:(guestCount+1)*20,status:$('mStatus').value,updated_at:new Date().toISOString()
+    first_name:$('mFirstName').value.trim(),last_name:$('mLastName').value.trim(),email:$('mEmail').value.trim().toLowerCase(),phone:$('mPhone').value.trim(),is_minister:$('mMinister').value==='si',church:$('mChurch').value.trim(),guest_count:guestCount,guest_details:guestCount?details:null,deposit_amount:guestCount*20,status:$('mStatus').value,updated_at:new Date().toISOString()
   };
   $('saveBookingButton').disabled=true;$('saveBookingButton').textContent='Salvataggio…';
   let savedId=id;

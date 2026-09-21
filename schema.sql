@@ -55,9 +55,11 @@ create table if not exists public.registration_participants (
 create index if not exists idx_registration_participants_registration on public.registration_participants(registration_id);
 create index if not exists idx_registration_participants_checkin on public.registration_participants(checked_in);
 
--- Mantiene automaticamente sincronizzati referente + ospiti con il check-in.
--- Per gli ospiti si aspetta una riga per persona, ad esempio:
--- Mario Rossi, 01/01/2000
+-- Mantiene automaticamente sincronizzati gli ospiti con il check-in.
+-- Il campo guest_count rappresenta il numero totale di persone prenotate
+-- ai fini dell'acconto (€20 per persona). Il referente del modulo non viene
+-- aggiunto automaticamente al check-in. Per gli ospiti si aspetta una riga
+-- per persona, ad esempio: Mario Rossi, 01/01/2000
 create or replace function public.sync_registration_participants()
 returns trigger
 language plpgsql
@@ -71,15 +73,9 @@ declare
   guest_name text;
   guest_birth date;
 begin
-  insert into public.registration_participants(
-    registration_id, participant_key, participant_order, participant_name, birth_date, updated_at
-  ) values (
-    new.id, 'main', 0, trim(new.first_name || ' ' || new.last_name), null, now()
-  )
-  on conflict (registration_id, participant_key) do update set
-    participant_order = excluded.participant_order,
-    participant_name = excluded.participant_name,
-    updated_at = now();
+  -- Rimuove eventuali righe 'main' create da versioni precedenti.
+  delete from public.registration_participants
+  where registration_id = new.id and participant_key = 'main';
 
   lines := regexp_split_to_array(coalesce(new.guest_details,''), E'\\r?\\n');
 
@@ -145,9 +141,9 @@ begin
   select * into r from public.registrations where id = p_registration_id;
   if not found then return; end if;
 
-  insert into public.registration_participants(registration_id,participant_key,participant_order,participant_name,birth_date,updated_at)
-  values(r.id,'main',0,trim(r.first_name||' '||r.last_name),null,now())
-  on conflict(registration_id,participant_key) do update set participant_name=excluded.participant_name,participant_order=0,updated_at=now();
+  -- Rimuove eventuali righe 'main' create da versioni precedenti.
+  delete from public.registration_participants
+  where registration_id = r.id and participant_key = 'main';
 
   lines := regexp_split_to_array(coalesce(r.guest_details,''), E'\\r?\\n');
   if r.guest_count > 0 then
