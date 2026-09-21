@@ -18,8 +18,7 @@ function showMessage(type, text){
 
 function updateGuests(){
   const n = Number(guestCount.value || 0);
-  const people = n;
-  amountBox.querySelector('strong').textContent = `€${(people * 20).toFixed(2).replace('.', ',')}`;
+  amountBox.querySelector('strong').textContent = `€${(n * 20).toFixed(2).replace('.', ',')}`;
 
   if(n > 1){
     guestDetailsWrap.classList.remove('hidden');
@@ -62,12 +61,7 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  const allowed = [
-    'application/pdf',
-    'image/jpeg',
-    'image/png',
-    'image/webp'
-  ];
+  const allowed = ['application/pdf','image/jpeg','image/png','image/webp'];
 
   if(!allowed.includes(file.type)){
     showMessage('error','Formato allegato non valido. Usa PDF, JPG, PNG o WEBP.');
@@ -85,17 +79,6 @@ form.addEventListener('submit', async (e) => {
   let uploadedPath = null;
 
   try{
-    /*
-      Generiamo PRIMA l'ID della prenotazione nel browser.
-
-      In questo modo non dobbiamo fare:
-      .insert(...).select('id').single()
-
-      quindi il form pubblico non ha bisogno di una policy SELECT
-      sulla tabella registrations.
-    */
-    const registrationId = crypto.randomUUID();
-
     const fileId = crypto.randomUUID();
     const ext = file.name.split('.').pop()?.toLowerCase() || 'file';
 
@@ -120,39 +103,29 @@ form.addEventListener('submit', async (e) => {
 
     const nGuests = Number(guestCount.value);
 
-    const payload = {
-      id: registrationId,
-      first_name: document.getElementById('firstName').value.trim(),
-      last_name: document.getElementById('lastName').value.trim(),
-      email: document.getElementById('email').value.trim().toLowerCase(),
-      phone: document.getElementById('phone').value.trim(),
-      is_minister: document.getElementById('minister').value === 'si',
-      church: document.getElementById('church').value.trim(),
-      guest_count: nGuests,
-      guest_details: nGuests > 1 ? guestDetails.value.trim() : null,
-      receipt_path: uploadedPath,
-      deposit_amount: nGuests * 20
-    };
-
     /*
       IMPORTANTE:
-      nessun .select('id') dopo l'insert.
-
-      L'ID lo abbiamo già creato noi sopra.
+      Non facciamo più INSERT diretto su registrations.
+      Chiamiamo una funzione RPC sicura lato database.
+      In questo modo RLS può restare chiusa al pubblico.
     */
-    const { error: insertError } = await supabaseClient
-      .from('registrations')
-      .insert(payload);
+    const { data: registrationId, error: rpcError } = await supabaseClient
+      .rpc('create_public_registration', {
+        p_first_name: document.getElementById('firstName').value.trim(),
+        p_last_name: document.getElementById('lastName').value.trim(),
+        p_email: document.getElementById('email').value.trim().toLowerCase(),
+        p_phone: document.getElementById('phone').value.trim(),
+        p_is_minister: document.getElementById('minister').value === 'si',
+        p_church: document.getElementById('church').value.trim(),
+        p_guest_count: nGuests,
+        p_guest_details: nGuests > 1 ? guestDetails.value.trim() : null,
+        p_receipt_path: uploadedPath,
+        p_deposit_amount: nGuests * 20
+      });
 
-    if(insertError) throw insertError;
+    if(rpcError) throw rpcError;
+    if(!registrationId) throw new Error('ID prenotazione non restituito dal server.');
 
-    /*
-      La prenotazione è già salvata.
-      Ora chiediamo alla Edge Function di:
-      - generare il PDF
-      - inviare la mail al partecipante
-      - inviare le eventuali notifiche amministrative / Telegram
-    */
     let emailSent = false;
 
     try{
@@ -186,7 +159,6 @@ form.addEventListener('submit', async (e) => {
 
     form.reset();
     updateGuests();
-
     fileName.textContent = 'Nessun file selezionato';
 
     showMessage(
@@ -196,28 +168,18 @@ form.addEventListener('submit', async (e) => {
         : 'Prenotazione salvata correttamente. Il PDF via email non è partito automaticamente: contatta l’organizzazione indicando il tuo indirizzo email.'
     );
 
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
   }catch(err){
     console.error('Errore prenotazione:', err);
 
-    /*
-      Se la prenotazione non viene salvata,
-      cancelliamo la distinta appena caricata.
-    */
     if(uploadedPath){
       try{
         await supabaseClient.storage
           .from('payment-receipts')
           .remove([uploadedPath]);
       }catch(cleanupError){
-        console.error(
-          'Errore durante la pulizia della distinta:',
-          cleanupError
-        );
+        console.error('Errore durante la pulizia della distinta:', cleanupError);
       }
     }
 
@@ -232,8 +194,6 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
-
-// Pulsanti COPIA per IBAN e intestazione.
 document.querySelectorAll('[data-copy]').forEach(button => {
   button.addEventListener('click', async () => {
     const target = document.getElementById(button.dataset.copy);
@@ -253,7 +213,6 @@ document.querySelectorAll('[data-copy]').forEach(button => {
     }
 
     const old = button.textContent;
-
     button.textContent = 'Copiato ✓';
     button.classList.add('copied');
 
