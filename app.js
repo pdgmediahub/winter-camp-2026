@@ -20,6 +20,7 @@ function updateGuests(){
   const n = Number(guestCount.value || 0);
   const people = n;
   amountBox.querySelector('strong').textContent = `€${(people * 20).toFixed(2).replace('.', ',')}`;
+
   if(n > 1){
     guestDetailsWrap.classList.remove('hidden');
     guestDetails.required = true;
@@ -31,12 +32,16 @@ function updateGuests(){
 }
 
 guestCount.addEventListener('change', updateGuests);
+
 receipt.addEventListener('change', () => {
   fileName.textContent = receipt.files?.[0]?.name || 'Nessun file selezionato';
 });
 
 function sanitizeName(name){
-  return name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]/g,'_');
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9._-]/g,'_');
 }
 
 form.addEventListener('submit', async (e) => {
@@ -44,21 +49,31 @@ form.addEventListener('submit', async (e) => {
   formMessage.className = 'message';
 
   if(!form.reportValidity()) return;
+
   if(!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('YOUR_PROJECT')){
     showMessage('error','Configurazione Supabase non completata.');
     return;
   }
 
   const file = receipt.files[0];
+
   if(!file){
     showMessage('error','Allega la distinta di bonifico.');
     return;
   }
-  const allowed = ['application/pdf','image/jpeg','image/png','image/webp'];
+
+  const allowed = [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+  ];
+
   if(!allowed.includes(file.type)){
     showMessage('error','Formato allegato non valido. Usa PDF, JPG, PNG o WEBP.');
     return;
   }
+
   if(file.size > 10 * 1024 * 1024){
     showMessage('error','Il file supera il limite di 10 MB.');
     return;
@@ -68,18 +83,45 @@ form.addEventListener('submit', async (e) => {
   submitButton.textContent = 'Invio in corso…';
 
   let uploadedPath = null;
+
   try{
-    const id = crypto.randomUUID();
+    /*
+      Generiamo PRIMA l'ID della prenotazione nel browser.
+
+      In questo modo non dobbiamo fare:
+      .insert(...).select('id').single()
+
+      quindi il form pubblico non ha bisogno di una policy SELECT
+      sulla tabella registrations.
+    */
+    const registrationId = crypto.randomUUID();
+
+    const fileId = crypto.randomUUID();
     const ext = file.name.split('.').pop()?.toLowerCase() || 'file';
-    uploadedPath = `${new Date().getFullYear()}/${id}-${sanitizeName(file.name.replace(/\.[^.]+$/, ''))}.${ext}`;
+
+    uploadedPath =
+      `${new Date().getFullYear()}/${fileId}-${sanitizeName(
+        file.name.replace(/\.[^.]+$/, '')
+      )}.${ext}`;
 
     const { error: uploadError } = await supabaseClient.storage
       .from('payment-receipts')
-      .upload(uploadedPath, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+      .upload(
+        uploadedPath,
+        file,
+        {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        }
+      );
+
     if(uploadError) throw uploadError;
 
     const nGuests = Number(guestCount.value);
+
     const payload = {
+      id: registrationId,
       first_name: document.getElementById('firstName').value.trim(),
       last_name: document.getElementById('lastName').value.trim(),
       email: document.getElementById('email').value.trim().toLowerCase(),
@@ -92,68 +134,132 @@ form.addEventListener('submit', async (e) => {
       deposit_amount: nGuests * 20
     };
 
-    const { data: inserted, error: insertError } = await supabaseClient
+    /*
+      IMPORTANTE:
+      nessun .select('id') dopo l'insert.
+
+      L'ID lo abbiamo già creato noi sopra.
+    */
+    const { error: insertError } = await supabaseClient
       .from('registrations')
-      .insert(payload)
-      .select('id')
-      .single();
+      .insert(payload);
+
     if(insertError) throw insertError;
 
-    // La prenotazione è già salvata. Ora chiediamo alla Edge Function di
-    // generare il PDF riepilogativo e inviarlo all'indirizzo indicato.
+    /*
+      La prenotazione è già salvata.
+      Ora chiediamo alla Edge Function di:
+      - generare il PDF
+      - inviare la mail al partecipante
+      - inviare le eventuali notifiche amministrative / Telegram
+    */
     let emailSent = false;
+
     try{
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/send-booking-confirmation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({ registration_id: inserted.id })
-      });
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/send-booking-confirmation`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            registration_id: registrationId
+          })
+        }
+      );
+
       emailSent = response.ok;
+
       if(!response.ok){
-        console.error('Invio email non riuscito:', await response.text());
+        console.error(
+          'Invio email/notifiche non riuscito:',
+          await response.text()
+        );
       }
+
     }catch(emailError){
-      console.error('Errore invio email:', emailError);
+      console.error('Errore invio email/notifiche:', emailError);
     }
 
     form.reset();
     updateGuests();
+
     fileName.textContent = 'Nessun file selezionato';
-    showMessage('success', emailSent
-      ? 'Prenotazione inviata correttamente. Ti abbiamo inviato anche il PDF riepilogativo via email.'
-      : 'Prenotazione salvata correttamente. Il PDF via email non è partito automaticamente: contatta l’organizzazione indicando il tuo indirizzo email.');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    showMessage(
+      'success',
+      emailSent
+        ? 'Prenotazione inviata correttamente. Ti abbiamo inviato anche il PDF riepilogativo via email.'
+        : 'Prenotazione salvata correttamente. Il PDF via email non è partito automaticamente: contatta l’organizzazione indicando il tuo indirizzo email.'
+    );
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+
   }catch(err){
-    console.error(err);
+    console.error('Errore prenotazione:', err);
+
+    /*
+      Se la prenotazione non viene salvata,
+      cancelliamo la distinta appena caricata.
+    */
     if(uploadedPath){
-      await supabaseClient.storage.from('payment-receipts').remove([uploadedPath]);
+      try{
+        await supabaseClient.storage
+          .from('payment-receipts')
+          .remove([uploadedPath]);
+      }catch(cleanupError){
+        console.error(
+          'Errore durante la pulizia della distinta:',
+          cleanupError
+        );
+      }
     }
-    showMessage('error','Non è stato possibile completare la prenotazione. Riprova tra qualche istante.');
+
+    showMessage(
+      'error',
+      'Non è stato possibile completare la prenotazione. Riprova tra qualche istante.'
+    );
+
   }finally{
     submitButton.disabled = false;
     submitButton.textContent = 'Invia prenotazione';
   }
 });
 
+
 // Pulsanti COPIA per IBAN e intestazione.
 document.querySelectorAll('[data-copy]').forEach(button => {
   button.addEventListener('click', async () => {
     const target = document.getElementById(button.dataset.copy);
     if(!target) return;
+
     const text = target.textContent.trim();
+
     try {
       await navigator.clipboard.writeText(text);
     } catch {
       const area = document.createElement('textarea');
-      area.value = text; document.body.appendChild(area); area.select();
-      document.execCommand('copy'); area.remove();
+      area.value = text;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
     }
+
     const old = button.textContent;
-    button.textContent = 'Copiato ✓'; button.classList.add('copied');
-    setTimeout(() => { button.textContent = old; button.classList.remove('copied'); }, 1600);
+
+    button.textContent = 'Copiato ✓';
+    button.classList.add('copied');
+
+    setTimeout(() => {
+      button.textContent = old;
+      button.classList.remove('copied');
+    }, 1600);
   });
 });
