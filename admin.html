@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1728" />
+  <title>Winter Camp — Gestionale</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body class="admin-body">
+  <section id="loginView" class="login-screen">
+    <div class="login-card-pro">
+      <div class="brand-mark">WC</div>
+      <span class="eyebrow">AREA RISERVATA</span>
+      <h1>Winter Camp<br><em>Control Room</em></h1>
+      <p class="login-copy">Prenotazioni, partecipanti e check-in hotel in un unico pannello.</p>
+      <div class="field"><label>Email</label><input id="adminEmail" type="email" autocomplete="username" placeholder="admin@..." /></div>
+      <div class="field"><label>Password</label><input id="adminPassword" type="password" autocomplete="current-password" placeholder="••••••••" /></div>
+      <div id="loginMessage" class="message"></div>
+      <button id="loginButton" class="primary-button">Accedi al gestionale</button>
+    </div>
+  </section>
+
+  <div id="adminView" class="manager hidden2">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark small">WC</div>
+        <div><strong>Winter Camp</strong><span>Gestionale 2026</span></div>
+      </div>
+      <nav class="nav-list">
+        <button class="nav-item active" data-view="dashboard"><span>◫</span> Dashboard</button>
+        <button class="nav-item" data-view="bookings"><span>⌁</span> Prenotazioni</button>
+        <button class="nav-item" data-view="checkin"><span>✓</span> Check-in Hotel</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button id="logoutButton" class="nav-item danger"><span>↗</span> Esci</button>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <button id="menuButton" class="icon-button mobile-only" aria-label="Apri menu">☰</button>
+        <div>
+          <span class="top-kicker">WINTER CAMP 2026</span>
+          <h2 id="viewTitle">Dashboard</h2>
+        </div>
+        <div class="top-actions">
+          <button id="refreshButton" class="ghost-button">Aggiorna</button>
+          <button id="exportButton" class="ghost-button">Scarica Excel</button>
+          <button id="newBookingButton" class="accent-button">+ Nuova prenotazione</button>
+        </div>
+      </header>
+
+      <section id="dashboardView" class="view-panel active">
+        <div class="hero-admin">
+          <div>
+            <span class="eyebrow light">CONTROL ROOM</span>
+            <h3>Tutto il Winter Camp,<br><em>sotto controllo.</em></h3>
+            <p>Dati live, gestione prenotazioni e arrivi in hotel sincronizzati in tempo reale.</p>
+          </div>
+          <div class="hero-live"><i></i> LIVE</div>
+        </div>
+
+        <div class="stats stats-main">
+          <article class="stat-card"><span>Prenotazioni</span><strong id="statBookings">0</strong><small>nuclei registrati</small></article>
+          <article class="stat-card"><span>Persone totali</span><strong id="statPeople">0</strong><small>partecipanti attesi</small></article>
+          <article class="stat-card"><span>Check-in</span><strong id="statCheckedIn">0</strong><small id="statCheckinPct">0% arrivati</small></article>
+          <article class="stat-card"><span>Acconti</span><strong id="statDeposit">€0</strong><small>totale registrato</small></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="panel-card">
+            <div class="panel-head"><div><span class="section-kicker">ULTIME</span><h3>Prenotazioni recenti</h3></div><button class="text-button" data-go="bookings">Vedi tutte →</button></div>
+            <div id="recentBookings" class="compact-list"></div>
+          </section>
+          <section class="panel-card">
+            <div class="panel-head"><div><span class="section-kicker">HOTEL</span><h3>Stato check-in</h3></div><button class="text-button" data-go="checkin">Apri check-in →</button></div>
+            <div class="progress-ring-wrap"><div class="progress-ring" id="progressRing"><span id="progressRingText">0%</span></div><div><strong id="dashPresent">0 presenti</strong><span id="dashAbsent">0 ancora da arrivare</span></div></div>
+            <div class="legend"><span><i class="dot green"></i> Presente</span><span><i class="dot red"></i> Assente</span><span><i class="dot amber"></i> Da verificare</span></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="bookingsView" class="view-panel">
+        <div class="toolbar-card">
+          <div class="search-box"><span>⌕</span><input id="searchInput" placeholder="Cerca nome, email, telefono, chiesa…" /></div>
+          <select id="bookingChurchFilter"><option value="">Tutte le chiese</option></select>
+          <select id="bookingStatusFilter"><option value="">Tutti gli stati</option><option value="ricevuta">Ricevuta</option><option value="confirmed">Confermata</option><option value="cancelled">Annullata</option></select>
+        </div>
+        <div id="bookingsCards" class="mobile-bookings"></div>
+        <div class="table-card desktop-table"><div class="table-wrap"><table>
+          <thead><tr><th>Prenotazione</th><th>Contatti</th><th>Chiesa</th><th>Persone</th><th>Acconto</th><th>Stato</th><th>Distinta</th><th></th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table></div></div>
+      </section>
+
+      <section id="checkinView" class="view-panel">
+        <div class="checkin-head">
+          <div><span class="section-kicker">ARRIVI HOTEL</span><h3>Check-in partecipanti</h3><p>Ogni persona viene gestita singolarmente. Il gruppo mostra l'avanzamento in tempo reale.</p></div>
+          <div class="checkin-mini-stats"><div><span>Presenti</span><strong id="checkinPresent">0</strong></div><div><span>Assenti</span><strong id="checkinAbsent">0</strong></div><div><span>Problemi</span><strong id="checkinIssues">0</strong></div></div>
+        </div>
+        <div class="toolbar-card checkin-toolbar">
+          <div class="search-box"><span>⌕</span><input id="checkinSearch" placeholder="Cerca partecipante, famiglia, chiesa…" /></div>
+          <select id="checkinChurchFilter"><option value="">Tutte le chiese</option></select>
+          <select id="checkinStateFilter"><option value="">Tutti</option><option value="present">Presenti</option><option value="absent">Assenti</option><option value="issue">Da verificare</option></select>
+        </div>
+        <div id="checkinGroups" class="checkin-groups"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="bookingModal" class="modal-backdrop hidden2" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-sheet">
+      <div class="modal-head"><div><span class="section-kicker">GESTIONE PRENOTAZIONE</span><h3 id="modalTitle">Nuova prenotazione</h3></div><button id="closeModal" class="icon-button">×</button></div>
+      <form id="adminBookingForm">
+        <input id="editRegistrationId" type="hidden" />
+        <div class="form-grid two">
+          <div class="field"><label>Nome *</label><input id="mFirstName" required /></div>
+          <div class="field"><label>Cognome *</label><input id="mLastName" required /></div>
+          <div class="field"><label>Email *</label><input id="mEmail" type="email" required /></div>
+          <div class="field"><label>Cellulare *</label><input id="mPhone" required /></div>
+          <div class="field"><label>Ministro *</label><select id="mMinister" required><option value="no">No</option><option value="si">Sì</option></select></div>
+          <div class="field"><label>Chiesa *</label><input id="mChurch" required /></div>
+          <div class="field"><label>Numero ospiti *</label><select id="mGuestCount" required></select></div>
+          <div class="field"><label>Stato</label><select id="mStatus"><option value="ricevuta">Ricevuta</option><option value="confirmed">Confermata</option><option value="cancelled">Annullata</option></select></div>
+        </div>
+        <div class="field"><label>Dati ospiti</label><textarea id="mGuestDetails" rows="6" placeholder="Mario Rossi, 01/01/2000&#10;Luisa Bianchi, 15/05/2010"></textarea><small>Un ospite per riga. Il gestionale creerà automaticamente le righe individuali per il check-in.</small></div>
+        <div class="modal-summary"><span>Persone totali <strong id="mPeopleTotal">1</strong></span><span>Acconto <strong id="mDeposit">€20,00</strong></span></div>
+        <label id="sendEmailRow" class="check-row"><input id="mSendEmail" type="checkbox" /><span>Invia il PDF riepilogativo via email dopo il salvataggio</span></label>
+        <div id="modalMessage" class="message"></div>
+        <div class="modal-actions"><button type="button" id="cancelModal" class="ghost-button">Annulla</button><button type="submit" id="saveBookingButton" class="accent-button">Salva prenotazione</button></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#f4f3ef" />
+  <title>Winter Camp 2026 — Prenotazione</title>
+  <meta name="description" content="Modulo ufficiale di prenotazione Winter Camp 2026" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="site-shell">
+    <header class="site-header">
+      <div class="identity">
+        <img src="assets/logo-palma.png" alt="Palma" class="identity-logo" />
+        <div class="identity-text">
+          <span>PDG PALMA</span>
+          <strong>Winter Camp 2026</strong>
+        </div>
+      </div>
+      <div class="status-pill"><i></i> Prenotazioni aperte</div>
+    </header>
+
+    <section class="hero-minimal">
+      <div class="hero-copy">
+        <span class="overline">PRENOTAZIONE ONLINE</span>
+        <h1>Winter Camp</h1>
+        <p>Compila il modulo, allega la distinta di bonifico e riceverai via email il PDF riepilogativo della prenotazione.</p>
+      </div>
+      <div class="hero-meta">
+        <div><span>Acconto</span><strong>€20</strong><small>per persona</small></div>
+        <div><span>Conferma</span><strong>PDF</strong><small>via email</small></div>
+      </div>
+    </section>
+
+    <section class="form-surface">
+      <div class="form-intro">
+        <div>
+          <span class="section-number">01</span>
+          <h2>Dati della prenotazione</h2>
+        </div>
+        <p>I campi contrassegnati con <span class="required">*</span> sono obbligatori.</p>
+      </div>
+
+      <form id="bookingForm" novalidate>
+        <div class="grid two">
+          <div class="field">
+            <label for="firstName">Nome <span class="required">*</span></label>
+            <input id="firstName" name="firstName" autocomplete="given-name" required />
+          </div>
+          <div class="field">
+            <label for="lastName">Cognome <span class="required">*</span></label>
+            <input id="lastName" name="lastName" autocomplete="family-name" required />
+          </div>
+        </div>
+
+        <div class="grid two">
+          <div class="field">
+            <label for="email">Email <span class="required">*</span></label>
+            <input id="email" name="email" type="email" autocomplete="email" placeholder="esempio@esempio.com" required />
+          </div>
+          <div class="field">
+            <label for="phone">Numero di cellulare <span class="required">*</span></label>
+            <input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="es. +39 333 123 4567" required />
+            <small>Valido per WhatsApp</small>
+          </div>
+        </div>
+
+        <div class="grid two">
+          <div class="field">
+            <label for="minister">Sei un Ministro? <span class="required">*</span></label>
+            <select id="minister" name="minister" required>
+              <option value="" selected disabled>Seleziona</option>
+              <option value="si">Sì</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="church">Chiesa di appartenenza <span class="required">*</span></label>
+            <input id="church" name="church" required />
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="form-intro compact">
+          <div>
+            <span class="section-number">02</span>
+            <h2>Ospiti</h2>
+          </div>
+        </div>
+
+        <div class="grid two guest-row">
+          <div class="field">
+            <label for="guestCount">Numero di ospiti <span class="required">*</span></label>
+            <select id="guestCount" name="guestCount" required>
+              <option value="" selected disabled>Seleziona</option>
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+          <div class="amount-line" id="amountBox" aria-live="polite">
+            <span>Acconto previsto</span>
+            <strong>€20,00</strong>
+            <small>€20,00 per persona</small>
+          </div>
+        </div>
+
+        <div class="field hidden" id="guestDetailsWrap">
+          <label for="guestDetails">Nome, Cognome e Data di nascita degli ospiti <span class="required">*</span></label>
+          <textarea id="guestDetails" name="guestDetails" rows="6" placeholder="Mario Rossi, 01/01/2000"></textarea>
+          <small>Inserisci un ospite per riga.</small>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="form-intro compact">
+          <div>
+            <span class="section-number">03</span>
+            <h2>Pagamento</h2>
+          </div>
+        </div>
+
+        <div class="payment-grid">
+          <div class="payment-copy">
+            <p>Esegui il bonifico con <strong>acconto di €20,00 per persona</strong> e allega la distinta. Senza distinta la prenotazione non potrà essere considerata completa.</p>
+          </div>
+          <dl class="bank-details">
+            <div>
+              <dt>IBAN</dt>
+              <dd><span id="ibanValue">IT05U0760116600001051361457</span><button type="button" class="copy-button" data-copy="ibanValue">Copia</button></dd>
+            </div>
+            <div>
+              <dt>Intestato a</dt>
+              <dd><span id="holderValue">Chiesa Evangelica Pentecostale Elim</span><button type="button" class="copy-button" data-copy="holderValue">Copia</button></dd>
+            </div>
+            <div>
+              <dt>Causale</dt>
+              <dd>Acconto Prenotazione Winter Camp “Cognome Famiglia”</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="field upload-field">
+          <label for="receipt">Distinta di bonifico <span class="required">*</span></label>
+          <div class="upload-box" id="uploadBox">
+            <input id="receipt" name="receipt" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" required />
+            <div class="upload-icon">↑</div>
+            <div class="upload-copy">
+              <strong>Carica il file</strong>
+              <span>PDF, JPG, PNG o WEBP · max 10 MB</span>
+            </div>
+          </div>
+          <p class="file-name" id="fileName">Nessun file selezionato</p>
+        </div>
+
+        <label class="check-row">
+          <input id="privacy" type="checkbox" required />
+          <span>Dichiaro di avere titolo a comunicare i dati degli eventuali ospiti e di aver fornito informazioni corrette. <span class="required">*</span></span>
+        </label>
+
+        <div id="formMessage" class="message" role="status" aria-live="polite"></div>
+
+        <div class="submit-wrap">
+          <div class="submit-note">
+            <strong>Tutto pronto?</strong>
+            <span>Dopo l’invio riceverai il riepilogo via email.</span>
+          </div>
+          <button id="submitButton" class="primary-button" type="submit">Invia prenotazione <span>→</span></button>
+        </div>
+      </form>
+    </section>
+
+    <footer class="site-footer">
+      <span>PDG Palma · Winter Camp 2026</span>
+      <span>Prenotazione online</span>
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
