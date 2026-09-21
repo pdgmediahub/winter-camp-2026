@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="admin.css" />
+  <link rel="stylesheet" href="styles.css?v=20260921-2035" />
+  <link rel="stylesheet" href="admin.css?v=20260921-2035" />
 </head>
 <body class="admin-body">
   <section id="loginView" class="login-screen">
@@ -129,7 +129,7 @@
           <div class="field"><label>Stato</label><select id="mStatus"><option value="ricevuta">Ricevuta</option><option value="confirmed">Confermata</option><option value="cancelled">Annullata</option></select></div>
         </div>
         <div class="field"><label>Dati ospiti</label><textarea id="mGuestDetails" rows="6" placeholder="Mario Rossi, 01/01/2000&#10;Luisa Bianchi, 15/05/2010"></textarea><small>Un ospite per riga. Il gestionale creerà automaticamente le righe individuali per il check-in.</small></div>
-        <div class="modal-summary"><span>Persone totali <strong id="mPeopleTotal">1</strong></span><span>Acconto <strong id="mDeposit">€20,00</strong></span></div>
+        <div class="modal-summary"><span>Persone totali <strong id="mPeopleTotal">0</strong></span><span>Acconto <strong id="mDeposit">€0,00</strong></span></div>
         <label id="sendEmailRow" class="check-row"><input id="mSendEmail" type="checkbox" /><span>Invia il PDF riepilogativo via email dopo il salvataggio</span></label>
         <div id="modalMessage" class="message"></div>
         <div class="modal-actions"><button type="button" id="cancelModal" class="ghost-button">Annulla</button><button type="submit" id="saveBookingButton" class="accent-button">Salva prenotazione</button></div>
@@ -139,7 +139,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="config.js"></script>
-  <script src="admin.js"></script>
+  <script src="config.js?v=20260921-2035"></script>
+  <script src="admin.js?v=20260921-2035"></script>
 </body>
 </html>

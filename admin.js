@@ -85,7 +85,18 @@ async function loadAll(){
   renderCheckin();
 }
 
-function registrationPeople(r){return Number(r.guest_count||0)}
+function registrationPeople(r){
+  // guest_count è il TOTALE delle persone prenotate, non va mai sommato il referente.
+  const stored = Number(r.guest_count);
+  if (Number.isFinite(stored) && stored >= 0) return stored;
+
+  // Fallback per eventuali righe storiche: ricava il totale dall'acconto (€20/persona).
+  const deposit = Number(r.deposit_amount);
+  if (Number.isFinite(deposit) && deposit >= 0) return Math.round(deposit / 20);
+
+  // Ultimo fallback: usa le righe effettivamente presenti nel check-in.
+  return participants.filter(p => p.registration_id === r.id).length;
+}
 function activeRegistrations(){return registrations.filter(r=>r.status!=='cancelled')}
 function activeParticipants(){
   const activeIds=new Set(activeRegistrations().map(r=>r.id));
