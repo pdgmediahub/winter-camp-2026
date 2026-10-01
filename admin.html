@@ -61,7 +61,7 @@
           <div>
             <span class="eyebrow light">CONTROL ROOM</span>
             <h3>Tutto il Winter Camp,<br><em>sotto controllo.</em></h3>
-            <p>Dati live, gestione prenotazioni e arrivi in hotel sincronizzati in tempo reale.</p>
+            <p>6–8 dicembre 2026 · Hotel dei Pini, Porto Empedocle · 2 notti · check-in dalle 15:00 · pranzo dell’8 dicembre incluso.</p>
           </div>
           <div class="hero-live"><i></i> LIVE</div>
         </div>
@@ -72,6 +72,7 @@
           <article class="stat-card"><span>Check-in</span><strong id="statCheckedIn">0</strong><small id="statCheckinPct">0% arrivati</small></article>
           <article class="stat-card"><span>Valore totale</span><strong id="statCampTotal">€0</strong><small>quote Winter Camp</small></article>
           <article class="stat-card"><span>Acconti</span><strong id="statDeposit">€0</strong><small>da versare / registrati</small></article>
+          <article class="stat-card"><span>Saldo residuo</span><strong id="statBalance">€0</strong><small>totale meno acconti</small></article>
         </div>
 
         <div class="dashboard-grid">
@@ -95,7 +96,7 @@
         </div>
         <div id="bookingsCards" class="mobile-bookings"></div>
         <div class="table-card desktop-table"><div class="table-wrap"><table>
-          <thead><tr><th>Prenotazione</th><th>Contatti</th><th>Chiesa</th><th>Partecipanti</th><th>Totale</th><th>Acconto</th><th>Pagamento</th><th>Email</th><th>Hotel / Camera</th><th>Stato</th><th>Distinta</th><th></th></tr></thead>
+          <thead><tr><th>Prenotazione</th><th>Contatti</th><th>Chiesa</th><th>Partecipanti</th><th>Totale soggiorno</th><th>Acconto</th><th>Saldo</th><th>Pagamento</th><th>Email</th><th>Hotel / Camera</th><th>Stato</th><th>Distinta</th><th></th></tr></thead>
           <tbody id="tableBody"></tbody>
         </table></div></div>
       </section>
@@ -131,11 +132,11 @@
           <div class="field"><label>Bambini</label><select id="mChildCount"></select><small>Età e tariffa si gestiscono sotto.</small></div>
           <div class="field"><label>Stato</label><select id="mStatus"><option value="ricevuta">Ricevuta</option><option value="confirmed">Confermata</option><option value="cancelled">Annullata</option></select></div>
           <div class="field"><label>Pagamento</label><select id="mPaymentStatus"><option value="pending">Da verificare</option><option value="confirmed">Confermato</option></select></div>
-          <div class="field"><label>Hotel</label><input id="mHotelName" placeholder="Es. Hotel ..." /></div>
+          <div class="field"><label>Hotel</label><input id="mHotelName" value="Hotel dei Pini" placeholder="Hotel dei Pini" /></div>
           <div class="field"><label>Camera</label><input id="mRoomNumber" placeholder="Es. 204 / Tripla" /></div>
         </div>
         <div id="mParticipantsEditor" class="admin-participant-editor"></div>
-        <div class="modal-summary"><span>Persone totali <strong id="mPeopleTotal">0</strong></span><span>Totale Winter Camp <strong id="mCampTotal">€0,00</strong></span><span>Acconto <strong id="mDeposit">€0,00</strong></span></div>
+        <div class="modal-summary"><span>Persone totali <strong id="mPeopleTotal">0</strong></span><span>Totale soggiorno <strong id="mCampTotal">€0,00</strong></span><span>Acconto <strong id="mDeposit">€0,00</strong></span><span>Saldo residuo <strong id="mBalance">€0,00</strong></span></div>
         <label id="sendEmailRow" class="check-row"><input id="mSendEmail" type="checkbox" /><span>Invia il PDF riepilogativo via email dopo il salvataggio</span></label>
         <div id="modalMessage" class="message"></div>
         <div class="modal-actions"><button type="button" id="cancelModal" class="ghost-button">Annulla</button><button type="submit" id="saveBookingButton" class="accent-button">Salva prenotazione</button></div>
@@ -153,7 +154,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="config.js?v=20261001-v6"></script>
-  <script src="admin.js?v=20261001-v6"></script>
+  <script src="config.js?v=20261001-v7"></script>
+  <script src="admin.js?v=20261001-v7"></script>
 </body>
 </html>

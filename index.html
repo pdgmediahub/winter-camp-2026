@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-v6" />
+  <link rel="stylesheet" href="styles.css?v=20261001-v7" />
 </head>
 <body>
   <main class="site-shell">
@@ -31,8 +31,27 @@
         <p>Compila il modulo, allega la distinta di bonifico e riceverai via email il PDF riepilogativo della prenotazione.</p>
       </div>
       <div class="hero-meta">
-        <div><span>Tariffa adulti</span><strong>€50</strong><small>per persona</small></div>
-        <div><span>Bambini</span><strong>€0–50</strong><small>in base all’età</small></div>
+        <div><span>Tariffa adulti</span><strong>€50</strong><small>a notte · 2 notti = €100</small></div>
+        <div><span>Bambini</span><strong>€0–50</strong><small>a notte · in base all’età</small></div>
+      </div>
+    </section>
+
+
+    <section class="event-info-box" aria-label="Informazioni soggiorno">
+      <div class="event-info-item">
+        <span class="event-info-label">CHECK-IN</span>
+        <strong>Domenica 6 dicembre 2026</strong>
+        <small>Dalle ore 15:00</small>
+      </div>
+      <div class="event-info-item">
+        <span class="event-info-label">CHECK-OUT</span>
+        <strong>Martedì 8 dicembre 2026</strong>
+        <small>Pranzo incluso</small>
+      </div>
+      <div class="event-info-item">
+        <span class="event-info-label">SOGGIORNO</span>
+        <strong>2 notti · Hotel dei Pini</strong>
+        <small>Porto Empedocle (AG)</small>
       </div>
     </section>
 
@@ -127,13 +146,14 @@
         <div class="pricing-summary" id="pricingSummary" aria-live="polite">
           <div class="pricing-head"><span>Riepilogo Winter Camp</span><strong id="totalPeopleValue">1 partecipante</strong></div>
           <div class="pricing-lines">
-            <div><span>Adulti</span><strong id="adultPriceLine">1 × €50,00</strong></div>
+            <div><span>Adulti · 2 notti</span><strong id="adultPriceLine">1 × €100,00</strong></div>
             <div id="childrenFreeLine" class="hidden"><span>Bambini 0–2 anni</span><strong>0 × €0,00</strong></div>
-            <div id="childrenReducedLine" class="hidden"><span>Bambini 3–10 anni</span><strong>0 × €30,00</strong></div>
-            <div id="childrenFullLine" class="hidden"><span>Bambini 11+ anni</span><strong>0 × €50,00</strong></div>
+            <div id="childrenReducedLine" class="hidden"><span>Bambini 3–10 anni · 2 notti</span><strong>0 × €60,00</strong></div>
+            <div id="childrenFullLine" class="hidden"><span>Bambini 11+ anni · 2 notti</span><strong>0 × €100,00</strong></div>
           </div>
-          <div class="pricing-total"><span>Totale Winter Camp</span><strong id="campTotal">€50,00</strong></div>
+          <div class="pricing-total"><span>Totale soggiorno · 2 notti</span><strong id="campTotal">€100,00</strong></div>
           <div class="pricing-deposit"><span>Acconto da versare ora</span><strong id="amountValue">€20,00</strong><small>€20 per ogni partecipante pagante; i bambini 0–2 anni non versano acconto.</small></div>
+          <div class="pricing-balance"><span>Saldo residuo dopo l’acconto</span><strong id="balanceValue">€80,00</strong><small>È l’importo restante del soggiorno, al netto dell’acconto versato.</small></div>
         </div>
 
         <div class="divider"></div>
@@ -147,7 +167,7 @@
 
         <div class="payment-grid">
           <div class="payment-copy">
-            <p>Esegui il bonifico dell’<strong>acconto indicato nel riepilogo</strong> e allega la distinta. L’acconto è di €20 per ogni partecipante pagante; i bambini da 0 a 2 anni compiuti sono gratuiti e non versano acconto.</p>
+            <p>Esegui il bonifico dell’<strong>acconto indicato nel riepilogo</strong> e allega la distinta. Le tariffe indicate sono <strong>per notte</strong> e il soggiorno comprende <strong>2 notti</strong>. L’acconto è di €20 per ogni partecipante pagante; i bambini da 0 a 2 anni non compiuti sono gratuiti e non versano acconto. Nel riepilogo trovi anche il saldo residuo.</p>
           </div>
           <dl class="bank-details">
             <div>
@@ -195,6 +215,20 @@
       </form>
     </section>
 
+
+    <section class="location-section" id="come-arrivare">
+      <div class="location-copy">
+        <span class="section-number">04</span>
+        <span class="overline">COME ARRIVARE</span>
+        <h2>Hotel dei Pini</h2>
+        <p>Strada Statale 115, Contrada San Calogero · 92014 Porto Empedocle (AG)</p>
+        <a class="maps-button" href="https://www.google.com/maps/dir/?api=1&destination=Hotel%20dei%20Pini%2C%20Strada%20Statale%20115%2C%20Contrada%20San%20Calogero%2C%2092014%20Porto%20Empedocle%20AG" target="_blank" rel="noopener">Apri indicazioni su Google Maps <span>↗</span></a>
+      </div>
+      <div class="map-wrap">
+        <iframe title="Mappa Hotel dei Pini Porto Empedocle" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=Hotel%20dei%20Pini%20Porto%20Empedocle%20Contrada%20San%20Calogero&output=embed"></iframe>
+      </div>
+    </section>
+
     <footer class="site-footer">
       <span>PDG Palma · Winter Camp 2026</span>
       <span>Prenotazione online</span>
@@ -203,6 +237,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260921-2035"></script>
-  <script src="app.js?v=20261001-v6"></script>
+  <script src="app.js?v=20261001-v7"></script>
 </body>
 </html>
