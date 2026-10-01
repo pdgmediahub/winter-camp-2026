@@ -18,6 +18,18 @@ function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt
 function fmtDate(v){if(!v)return '—';return new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short'}).format(new Date(v))}
 function fmtTime(v){if(!v)return '—';return new Intl.DateTimeFormat('it-IT',{hour:'2-digit',minute:'2-digit'}).format(new Date(v))}
 function euros(v){return new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(Number(v)||0)}
+function childPrice(age){age=Number(age);return age<=2?0:age<=10?30:50}
+function parseParticipantData(r){
+  let data=r?.participants_data||[]; if(typeof data==='string'){try{data=JSON.parse(data)}catch{data=[]}}
+  if(Array.isArray(data)&&data.length)return data;
+  const ps=participants.filter(p=>p.registration_id===r?.id).sort((a,b)=>(a.participant_order||0)-(b.participant_order||0));
+  return ps.map((p,i)=>({key:p.participant_key||`legacy-${i}`,type:p.participant_type||'adult',name:p.participant_name,first_name:'',last_name:'',birth_date:p.birth_date||null,age_years:p.age_years??null,age_label:p.age_band||'Adulto',price:Number(p.price_amount??50)}));
+}
+function registrationTotal(r){const v=Number(r.total_amount);return Number.isFinite(v)?v:registrationPeople(r)*50}
+function registrationAdults(r){const v=Number(r.adult_count);return Number.isFinite(v)&&v>=1?v:parseParticipantData(r).filter(p=>p.type!=='child').length||registrationPeople(r)}
+function registrationChildren(r){const v=Number(r.child_count);return Number.isFinite(v)&&v>=0?v:parseParticipantData(r).filter(p=>p.type==='child').length}
+function pricingFromData(adultsData,childrenData){const adults=1+adultsData.length;const free=childrenData.filter(c=>Number(c.age_years)<=2).length;const reduced=childrenData.filter(c=>Number(c.age_years)>=3&&Number(c.age_years)<=10).length;const full=childrenData.filter(c=>Number(c.age_years)>=11).length;return{adults,children:childrenData.length,people:adults+childrenData.length,total:adults*50+reduced*30+full*50,deposit:(adults+reduced+full)*20,free,reduced,full}}
+
 function setMsg(el,type,text){el.className=`message ${type}`;el.textContent=text}
 function clearMsg(el){el.className='message';el.textContent=''}
 
@@ -91,16 +103,8 @@ async function loadAll(){
 }
 
 function registrationPeople(r){
-  // guest_count è il TOTALE delle persone prenotate, non va mai sommato il referente.
-  const stored = Number(r.guest_count);
-  if (Number.isFinite(stored) && stored >= 0) return stored;
-
-  // Fallback per eventuali righe storiche: ricava il totale dall'acconto (€20/persona).
-  const deposit = Number(r.deposit_amount);
-  if (Number.isFinite(deposit) && deposit >= 0) return Math.round(deposit / 20);
-
-  // Ultimo fallback: usa le righe effettivamente presenti nel check-in.
-  return participants.filter(p => p.registration_id === r.id).length;
+  const stored=Number(r.guest_count); if(Number.isFinite(stored)&&stored>=0)return stored;
+  return registrationAdults(r)+registrationChildren(r);
 }
 function activeRegistrations(){return registrations.filter(r=>r.status!=='cancelled')}
 function activeParticipants(){
@@ -111,6 +115,7 @@ function renderDashboard(){
   const regs=activeRegistrations();
   const people=regs.reduce((s,r)=>s+registrationPeople(r),0);
   const deposits=regs.reduce((s,r)=>s+Number(r.deposit_amount||0),0);
+  const campTotal=regs.reduce((s,r)=>s+registrationTotal(r),0);
   const parts=activeParticipants();
   const present=parts.filter(p=>p.checked_in).length;
   const pct=parts.length?Math.round(present/parts.length*100):0;
@@ -118,6 +123,7 @@ function renderDashboard(){
   $('statPeople').textContent=people;
   $('statCheckedIn').textContent=present;
   $('statCheckinPct').textContent=`${pct}% arrivati`;
+  $('statCampTotal').textContent=euros(campTotal);
   $('statDeposit').textContent=euros(deposits);
   $('progressRing').style.setProperty('--pct',`${pct*3.6}deg`);
   $('progressRingText').textContent=`${pct}%`;
@@ -127,7 +133,7 @@ function renderDashboard(){
   $('recentBookings').innerHTML=registrations.slice(0,6).map(r=>`
     <div class="compact-row">
       <div><strong>${esc(r.first_name)} ${esc(r.last_name)}</strong><span>${esc(r.church)} · ${registrationPeople(r)} ${registrationPeople(r)===1?'persona':'persone'}</span></div>
-      <div class="compact-meta"><strong>${euros(r.deposit_amount)}</strong><span>${fmtDate(r.created_at)}</span></div>
+      <div class="compact-meta"><strong>${euros(registrationTotal(r))}</strong><span>${fmtDate(r.created_at)}</span></div>
     </div>`).join('') || '<p class="muted">Nessuna prenotazione.</p>';
 }
 
@@ -164,7 +170,8 @@ function renderBookings(){
       <td><strong>${esc(r.first_name)} ${esc(r.last_name)}</strong><br><span class="muted">${fmtDate(r.created_at)} · ${r.source==='manual'?'Manuale':'Online'}</span></td>
       <td>${esc(r.email)}<br><span class="muted">${esc(r.phone)}</span></td>
       <td>${esc(r.church)}</td>
-      <td><strong>${registrationPeople(r)}</strong><br><span class="muted">Check-in ${groupProgress(r)}</span></td>
+      <td><strong>${registrationPeople(r)}</strong><br><span class="muted">${registrationAdults(r)} adulti · ${registrationChildren(r)} bambini · Check-in ${groupProgress(r)}</span></td>
+      <td><strong>${euros(registrationTotal(r))}</strong></td>
       <td>${euros(r.deposit_amount)}</td>
       <td><span class="payment-pill ${r.payment_status==='confirmed'?'confirmed':'pending'}">${paymentLabel(r.payment_status)}</span><br><button class="mini-btn ${r.payment_status==='confirmed'?'':'success'}" onclick="togglePayment('${r.id}')">${r.payment_status==='confirmed'?'Annulla conferma':'Conferma'}</button></td>
       <td><span class="email-pill ${r.confirmation_email_sent_at?'sent':'pending'}">${r.confirmation_email_sent_at?'Inviata':'Non inviata'}</span><br><button class="mini-btn" onclick="resendConfirmation('${r.id}')">Reinvia PDF</button></td>
@@ -177,7 +184,7 @@ function renderBookings(){
   $('bookingsCards').innerHTML=rows.map(r=>`
     <article class="booking-mobile-card">
       <div class="booking-mobile-top"><div><h4>${esc(r.first_name)} ${esc(r.last_name)}</h4><p>${esc(r.church)} · ${esc(r.phone)}</p></div><span class="status-pill ${esc(r.status||'')}">${statusLabel(r.status)}</span></div>
-      <div class="booking-mobile-grid"><div><span>Persone</span><strong>${registrationPeople(r)}</strong></div><div><span>Check-in</span><strong>${groupProgress(r)}</strong></div><div><span>Acconto</span><strong>${euros(r.deposit_amount)}</strong></div><div><span>Pagamento</span><strong>${paymentLabel(r.payment_status)}</strong></div><div><span>Email</span><strong>${r.confirmation_email_sent_at?'Inviata':'Non inviata'}</strong></div><div><span>Hotel / Camera</span><strong>${esc(roomLabel(r))}</strong></div></div>
+      <div class="booking-mobile-grid"><div><span>Persone</span><strong>${registrationPeople(r)} (${registrationAdults(r)}A / ${registrationChildren(r)}B)</strong></div><div><span>Check-in</span><strong>${groupProgress(r)}</strong></div><div><span>Totale</span><strong>${euros(registrationTotal(r))}</strong></div><div><span>Acconto</span><strong>${euros(r.deposit_amount)}</strong></div><div><span>Pagamento</span><strong>${paymentLabel(r.payment_status)}</strong></div><div><span>Email</span><strong>${r.confirmation_email_sent_at?'Inviata':'Non inviata'}</strong></div><div><span>Hotel / Camera</span><strong>${esc(roomLabel(r))}</strong></div></div>
       <div class="booking-mobile-actions">${r.receipt_path?`<button class="mini-btn" onclick="openReceipt('${String(r.receipt_path).replace(/'/g,"\\'")}')">Distinta</button>`:''}<button class="mini-btn" onclick="resendConfirmation('${r.id}')">Reinvia PDF</button><button class="mini-btn ${r.payment_status==='confirmed'?'':'success'}" onclick="togglePayment('${r.id}')">${r.payment_status==='confirmed'?'Pagamento ✓':'Conferma pagamento'}</button><button class="mini-btn" onclick="editBooking('${r.id}')">Modifica</button><button class="mini-btn danger" onclick="deleteBooking('${r.id}')">Elimina</button></div>
     </article>`).join('');
 }
@@ -224,8 +231,10 @@ function renderCheckin(){
 function participantHtml(p){
   const cls=p.issue?'issue':p.checked_in?'present':'';
   const status=p.checked_in?`Arrivato alle ${fmtTime(p.checked_in_at)}${p.checked_in_by?` · ${esc(p.checked_in_by)}`:''}`:'Non ancora arrivato';
+  const age=p.participant_type==='child'?(Number(p.age_years)>=11?'11+ anni':`${p.age_years} ${Number(p.age_years)===1?'anno':'anni'}`):'Adulto';
+  const meta=[age,euros(p.price_amount??(p.participant_type==='child'?childPrice(p.age_years):50)),p.birth_date?`Nato/a il ${new Date(p.birth_date+'T00:00:00').toLocaleDateString('it-IT')}`:''].filter(Boolean).join(' · ');
   return `<div class="participant-row ${cls}">
-    <div class="participant-main"><strong>${esc(p.participant_name)}</strong><span>${p.birth_date?`Nato/a il ${new Date(p.birth_date+'T00:00:00').toLocaleDateString('it-IT')}`:(p.participant_key==='main'?'Referente prenotazione':'Ospite')}</span></div>
+    <div class="participant-main"><strong>${esc(p.participant_name)}</strong><span>${esc(meta)}</span></div>
     <div class="participant-status">${status}</div>
     <button class="check-btn ${p.checked_in?'undo':''}" onclick="toggleCheckin('${p.id}',${p.checked_in?'false':'true'})">${p.checked_in?'ANNULLA':'CHECK-IN'}</button>
     <div class="participant-actions"><button class="issue-btn ${p.issue?'active':''}" onclick="toggleIssue('${p.id}',${p.issue?'false':'true'})">${p.issue?'PROBLEMA ✓':'PROBLEMA'}</button></div>
@@ -246,58 +255,65 @@ async function toggleIssue(id,value){
 }
 window.toggleCheckin=toggleCheckin;window.toggleIssue=toggleIssue;
 
-for(let i=1;i<=10;i++) $('mGuestCount').insertAdjacentHTML('beforeend',`<option value="${i}">${i}</option>`);
-function updateModalSummary(){
-  const n=Number($('mGuestCount').value||0);
-  $('mPeopleTotal').textContent=n;
-  $('mDeposit').textContent=euros(n*20);
-  $('mGuestDetails').required=n>1;
+for(let i=1;i<=10;i++) $('mAdultCount').insertAdjacentHTML('beforeend',`<option value="${i}">${i}</option>`);
+for(let i=0;i<=10;i++) $('mChildCount').insertAdjacentHTML('beforeend',`<option value="${i}">${i}</option>`);
+function adminAgeOptions(selected=''){let h='<option value="" disabled '+(selected===''?'selected':'')+'>Età</option>';for(let i=0;i<=10;i++)h+=`<option value="${i}" ${String(selected)===String(i)?'selected':''}>${i} ${i===1?'anno':'anni'}</option>`;h+=`<option value="11" ${String(selected)==='11'?'selected':''}>11+ anni</option>`;return h}
+function adminParticipantDataFor(r){return parseParticipantData(r).filter(p=>p.key!=='main')}
+function renderAdminParticipantEditor(data=[]){
+  const adults=Math.max(1,Number($('mAdultCount').value||1)), children=Math.max(0,Number($('mChildCount').value||0));
+  const oldAdults=data.filter(p=>p.type!=='child'), oldChildren=data.filter(p=>p.type==='child');
+  let html='';
+  if(adults>1){html+='<div class="admin-participant-title"><strong>Altri adulti</strong><span>€50 ciascuno</span></div>';for(let i=0;i<adults-1;i++){const p=oldAdults[i]||{};html+=`<div class="admin-participant-card" data-type="adult"><strong>Adulto ${i+2}</strong><div class="form-grid two"><div class="field"><label>Nome *</label><input class="ap-first" value="${esc(p.first_name||'')}" required></div><div class="field"><label>Cognome *</label><input class="ap-last" value="${esc(p.last_name||'')}" required></div><div class="field"><label>Data di nascita *</label><input class="ap-birth" type="date" value="${esc(p.birth_date||'')}" required></div></div></div>`}}
+  if(children){html+='<div class="admin-participant-title"><strong>Bambini</strong><span>Tariffa automatica per età</span></div>';for(let i=0;i<children;i++){const p=oldChildren[i]||{};html+=`<div class="admin-participant-card" data-type="child"><strong>Bambino ${i+1}</strong><div class="form-grid two"><div class="field"><label>Nome *</label><input class="ap-first" value="${esc(p.first_name||'')}" required></div><div class="field"><label>Cognome *</label><input class="ap-last" value="${esc(p.last_name||'')}" required></div><div class="field"><label>Età *</label><select class="ap-age" required>${adminAgeOptions(p.age_years??'')}</select></div><div class="field"><label>Data di nascita</label><input class="ap-birth" type="date" value="${esc(p.birth_date||'')}"></div></div></div>`}}
+  $('mParticipantsEditor').innerHTML=html; updateModalSummary();
 }
-$('mGuestCount').addEventListener('change',updateModalSummary);
+function collectAdminExtraParticipants(){
+  const adults=[],children=[];
+  $('mParticipantsEditor').querySelectorAll('.admin-participant-card').forEach(card=>{const obj={first_name:card.querySelector('.ap-first').value.trim(),last_name:card.querySelector('.ap-last').value.trim(),birth_date:card.querySelector('.ap-birth')?.value||null};if(card.dataset.type==='child'){obj.age_years=Number(card.querySelector('.ap-age').value);children.push(obj)}else adults.push(obj)});
+  return{adults,children};
+}
+function adminFullParticipantData(){
+  const x=collectAdminExtraParticipants(); const first=$('mFirstName').value.trim(),last=$('mLastName').value.trim();
+  const arr=[{key:'main',type:'adult',first_name:first,last_name:last,name:`${first} ${last}`.trim(),birth_date:null,age_years:null,age_label:'Adulto',price:50}];
+  x.adults.forEach((p,i)=>arr.push({key:`adult-${i+1}`,type:'adult',...p,name:`${p.first_name} ${p.last_name}`.trim(),age_years:null,age_label:'Adulto',price:50}));
+  x.children.forEach((p,i)=>arr.push({key:`child-${i+1}`,type:'child',...p,name:`${p.first_name} ${p.last_name}`.trim(),age_label:Number(p.age_years)>=11?'11+ anni':`${p.age_years} anni`,price:childPrice(p.age_years)}));
+  return arr;
+}
+function updateModalSummary(){
+  const adults=Math.max(1,Number($('mAdultCount').value||1)), children=Math.max(0,Number($('mChildCount').value||0));
+  const childAges=[...$('mParticipantsEditor').querySelectorAll('[data-type="child"] .ap-age')].map(x=>Number(x.value)).filter(Number.isFinite);
+  const reduced=childAges.filter(a=>a>=3&&a<=10).length,full=childAges.filter(a=>a>=11).length;
+  $('mPeopleTotal').textContent=adults+children; $('mCampTotal').textContent=euros(adults*50+reduced*30+full*50); $('mDeposit').textContent=euros((adults+reduced+full)*20);
+}
+$('mAdultCount').addEventListener('change',()=>renderAdminParticipantEditor(collectAdminExtraParticipants().adults.map((x,i)=>({...x,type:'adult',key:`adult-${i+1}`})).concat(collectAdminExtraParticipants().children.map((x,i)=>({...x,type:'child',key:`child-${i+1}`})))));
+$('mChildCount').addEventListener('change',()=>renderAdminParticipantEditor(collectAdminExtraParticipants().adults.map((x,i)=>({...x,type:'adult',key:`adult-${i+1}`})).concat(collectAdminExtraParticipants().children.map((x,i)=>({...x,type:'child',key:`child-${i+1}`})))));
+$('mParticipantsEditor').addEventListener('input',updateModalSummary);$('mParticipantsEditor').addEventListener('change',updateModalSummary);
 
 function openBookingModal(mode='new',r=null){
-  $('adminBookingForm').reset();clearMsg($('modalMessage'));
-  $('editRegistrationId').value=r?.id||'';
-  $('modalTitle').textContent=mode==='edit'?'Modifica prenotazione':'Nuova prenotazione';
-  $('sendEmailRow').classList.toggle('hidden2',mode==='edit');
-  if(r){
-    $('mFirstName').value=r.first_name||'';$('mLastName').value=r.last_name||'';$('mEmail').value=r.email||'';$('mPhone').value=r.phone||'';$('mMinister').value=r.is_minister?'si':'no';$('mChurch').value=r.church||'';$('mGuestCount').value=String(r.guest_count||1);$('mStatus').value=r.status||'ricevuta';$('mPaymentStatus').value=r.payment_status||'pending';$('mHotelName').value=r.hotel_name||'';$('mRoomNumber').value=r.room_number||'';$('mGuestDetails').value=r.guest_details||'';
-  }else{$('mGuestCount').value='1';$('mStatus').value='ricevuta';$('mPaymentStatus').value='pending';$('mHotelName').value='';$('mRoomNumber').value='';}
-  updateModalSummary();
-  $('bookingModal').classList.remove('hidden2');
-  setTimeout(()=>$('mFirstName').focus(),50);
+  $('adminBookingForm').reset();clearMsg($('modalMessage'));$('editRegistrationId').value=r?.id||'';$('modalTitle').textContent=mode==='edit'?'Modifica prenotazione':'Nuova prenotazione';$('sendEmailRow').classList.toggle('hidden2',mode==='edit');
+  if(r){$('mFirstName').value=r.first_name||'';$('mLastName').value=r.last_name||'';$('mEmail').value=r.email||'';$('mPhone').value=r.phone||'';$('mMinister').value=r.is_minister?'si':'no';$('mChurch').value=r.church||'';$('mAdultCount').value=String(registrationAdults(r));$('mChildCount').value=String(registrationChildren(r));$('mStatus').value=r.status||'ricevuta';$('mPaymentStatus').value=r.payment_status||'pending';$('mHotelName').value=r.hotel_name||'';$('mRoomNumber').value=r.room_number||'';renderAdminParticipantEditor(adminParticipantDataFor(r));}
+  else{$('mAdultCount').value='1';$('mChildCount').value='0';$('mStatus').value='ricevuta';$('mPaymentStatus').value='pending';$('mHotelName').value='';$('mRoomNumber').value='';renderAdminParticipantEditor([])}
+  updateModalSummary();$('bookingModal').classList.remove('hidden2');setTimeout(()=>$('mFirstName').focus(),50);
 }
 function closeBookingModal(){$('bookingModal').classList.add('hidden2')}
-$('newBookingButton').addEventListener('click',()=>openBookingModal('new'));
-$('closeModal').addEventListener('click',closeBookingModal);$('cancelModal').addEventListener('click',closeBookingModal);
-$('bookingModal').addEventListener('click',e=>{if(e.target===$('bookingModal'))closeBookingModal()});
+$('newBookingButton').addEventListener('click',()=>openBookingModal('new'));$('closeModal').addEventListener('click',closeBookingModal);$('cancelModal').addEventListener('click',closeBookingModal);$('bookingModal').addEventListener('click',e=>{if(e.target===$('bookingModal'))closeBookingModal()});
 function editBooking(id){const r=registrations.find(x=>x.id===id);if(r)openBookingModal('edit',r)}
 window.editBooking=editBooking;
 
 $('adminBookingForm').addEventListener('submit',async e=>{
-  e.preventDefault();clearMsg($('modalMessage'));
-  if(!$('adminBookingForm').reportValidity())return;
-  const id=$('editRegistrationId').value;
-  const guestCount=Number($('mGuestCount').value||0);
-  const details=$('mGuestDetails').value.trim();
-  if(guestCount>1 && !details){setMsg($('modalMessage'),'error','Inserisci i dati degli altri partecipanti, uno per riga.');return}
-  const original=id?registrations.find(x=>x.id===id):null;
-  const paymentStatus=$('mPaymentStatus').value;
-  const payload={
-    first_name:$('mFirstName').value.trim(),last_name:$('mLastName').value.trim(),email:$('mEmail').value.trim().toLowerCase(),phone:$('mPhone').value.trim(),is_minister:$('mMinister').value==='si',church:$('mChurch').value.trim(),guest_count:guestCount,guest_details:guestCount>1?details:null,deposit_amount:guestCount*20,status:$('mStatus').value,payment_status:paymentStatus,payment_confirmed_at:paymentStatus==='confirmed'?(original?.payment_confirmed_at||new Date().toISOString()):null,payment_confirmed_by:paymentStatus==='confirmed'?(original?.payment_confirmed_by||currentAdminEmail):null,hotel_name:$('mHotelName').value.trim()||null,room_number:$('mRoomNumber').value.trim()||null,updated_at:new Date().toISOString()
-  };
-  $('saveBookingButton').disabled=true;$('saveBookingButton').textContent='Salvataggio…';
-  let savedId=id;
-  let error;
+  e.preventDefault();clearMsg($('modalMessage'));if(!$('adminBookingForm').reportValidity())return;
+  const id=$('editRegistrationId').value;const original=id?registrations.find(x=>x.id===id):null;const paymentStatus=$('mPaymentStatus').value;
+  const pdata=adminFullParticipantData();const adultCount=Number($('mAdultCount').value),childCount=Number($('mChildCount').value);
+  if(pdata.filter(p=>p.type==='adult').length!==adultCount||pdata.filter(p=>p.type==='child').length!==childCount){setMsg($('modalMessage'),'error','Controlla il numero dei partecipanti.');return}
+  const total=pdata.reduce((s,p)=>s+Number(p.price||0),0),deposit=pdata.filter(p=>Number(p.price)>0).length*20;
+  const details=pdata.slice(1).map(p=>`${p.name}${p.birth_date?`, ${new Date(p.birth_date+'T00:00:00').toLocaleDateString('it-IT')}`:''}${p.type==='child'?` · ${p.age_label}`:''}`).join('\n')||null;
+  const payload={first_name:$('mFirstName').value.trim(),last_name:$('mLastName').value.trim(),email:$('mEmail').value.trim().toLowerCase(),phone:$('mPhone').value.trim(),is_minister:$('mMinister').value==='si',church:$('mChurch').value.trim(),guest_count:pdata.length,adult_count:adultCount,child_count:childCount,participants_data:pdata,guest_details:details,total_amount:total,deposit_amount:deposit,status:$('mStatus').value,payment_status:paymentStatus,payment_confirmed_at:paymentStatus==='confirmed'?(original?.payment_confirmed_at||new Date().toISOString()):null,payment_confirmed_by:paymentStatus==='confirmed'?(original?.payment_confirmed_by||currentAdminEmail):null,hotel_name:$('mHotelName').value.trim()||null,room_number:$('mRoomNumber').value.trim()||null,updated_at:new Date().toISOString()};
+  $('saveBookingButton').disabled=true;$('saveBookingButton').textContent='Salvataggio…';let savedId=id,error;
   if(id){({error}=await sb.from('registrations').update(payload).eq('id',id));}
-  else{
-    payload.source='manual';
-    const result=await sb.from('registrations').insert(payload).select('id').single();error=result.error;savedId=result.data?.id;
-  }
+  else{payload.source='manual';const result=await sb.from('registrations').insert(payload).select('id').single();error=result.error;savedId=result.data?.id;}
   if(error){setMsg($('modalMessage'),'error','Errore: '+error.message);$('saveBookingButton').disabled=false;$('saveBookingButton').textContent='Salva prenotazione';return}
-  if(!id && savedId){await invokeConfirmationFunction(savedId,{sendUser:$('mSendEmail').checked,notifyAdmin:true});}
-  $('saveBookingButton').disabled=false;$('saveBookingButton').textContent='Salva prenotazione';
-  closeBookingModal();await loadAll();
+  if(!id&&savedId){await invokeConfirmationFunction(savedId,{sendUser:$('mSendEmail').checked,notifyAdmin:true});}
+  $('saveBookingButton').disabled=false;$('saveBookingButton').textContent='Salva prenotazione';closeBookingModal();await loadAll();
 });
 
 async function invokeConfirmationFunction(registrationId,{force=false,sendUser=true,notifyAdmin=true}={}){
@@ -341,15 +357,15 @@ window.deleteBooking=deleteBooking;
 
 $('exportButton').addEventListener('click',()=>{
   const bookingRows=registrations.map(r=>({
-    'Data prenotazione':fmtDate(r.created_at),'Nome':r.first_name,'Cognome':r.last_name,'Email':r.email,'Cellulare':r.phone,'Ministro':r.is_minister?'Sì':'No','Chiesa di appartenenza':r.church,'Persone totali':registrationPeople(r),'Altri partecipanti':r.guest_details||'','Acconto €':Number(r.deposit_amount||0),'Stato':statusLabel(r.status),'Origine':r.source==='manual'?'Manuale':'Online','Email PDF inviata':r.confirmation_email_sent_at?fmtDate(r.confirmation_email_sent_at):'No','N. invii email':Number(r.confirmation_email_count||0),'Pagamento':paymentLabel(r.payment_status),'Pagamento confermato il':r.payment_confirmed_at?fmtDate(r.payment_confirmed_at):'','Confermato da':r.payment_confirmed_by||'','Hotel':r.hotel_name||'','Camera':r.room_number||'','Distinta':r.receipt_path||''
+    'Data prenotazione':fmtDate(r.created_at),'Nome':r.first_name,'Cognome':r.last_name,'Email':r.email,'Cellulare':r.phone,'Ministro':r.is_minister?'Sì':'No','Chiesa di appartenenza':r.church,'Adulti':registrationAdults(r),'Bambini':registrationChildren(r),'Persone totali':registrationPeople(r),'Bambini 0-2':parseParticipantData(r).filter(p=>p.type==='child'&&Number(p.age_years)<=2).length,'Bambini 3-10':parseParticipantData(r).filter(p=>p.type==='child'&&Number(p.age_years)>=3&&Number(p.age_years)<=10).length,'Bambini 11+':parseParticipantData(r).filter(p=>p.type==='child'&&Number(p.age_years)>=11).length,'Altri partecipanti':r.guest_details||'','Totale Winter Camp €':registrationTotal(r),'Acconto €':Number(r.deposit_amount||0),'Stato':statusLabel(r.status),'Origine':r.source==='manual'?'Manuale':'Online','Email PDF inviata':r.confirmation_email_sent_at?fmtDate(r.confirmation_email_sent_at):'No','N. invii email':Number(r.confirmation_email_count||0),'Pagamento':paymentLabel(r.payment_status),'Pagamento confermato il':r.payment_confirmed_at?fmtDate(r.payment_confirmed_at):'','Confermato da':r.payment_confirmed_by||'','Hotel':r.hotel_name||'','Camera':r.room_number||'','Distinta':r.receipt_path||''
   }));
   const participantRows=participants.map(p=>{
     const r=registrations.find(x=>x.id===p.registration_id);
-    return {'Famiglia / Referente':r?`${r.first_name} ${r.last_name}`:'','Partecipante':p.participant_name,'Data di nascita':p.birth_date?new Date(p.birth_date+'T00:00:00').toLocaleDateString('it-IT'):'','Chiesa':r?.church||'','Hotel':r?.hotel_name||'','Camera':r?.room_number||'','Check-in':p.checked_in?'PRESENTE':'ASSENTE','Orario arrivo':p.checked_in_at?fmtDate(p.checked_in_at):'','Operatore':p.checked_in_by||'','Da verificare':p.issue?'Sì':'No','Note':p.notes||''};
+    return {'Famiglia / Referente':r?`${r.first_name} ${r.last_name}`:'','Partecipante':p.participant_name,'Tipo':p.participant_type==='child'?'Bambino':'Adulto','Età':p.participant_type==='child'?(Number(p.age_years)>=11?'11+':Number(p.age_years)):'Adulto','Tariffa €':Number(p.price_amount||0),'Data di nascita':p.birth_date?new Date(p.birth_date+'T00:00:00').toLocaleDateString('it-IT'):'','Chiesa':r?.church||'','Hotel':r?.hotel_name||'','Camera':r?.room_number||'','Check-in':p.checked_in?'PRESENTE':'ASSENTE','Orario arrivo':p.checked_in_at?fmtDate(p.checked_in_at):'','Operatore':p.checked_in_by||'','Da verificare':p.issue?'Sì':'No','Note':p.notes||''};
   });
   const wb=XLSX.utils.book_new();
-  const ws1=XLSX.utils.json_to_sheet(bookingRows);ws1['!cols']=Array(22).fill({wch:20});XLSX.utils.book_append_sheet(wb,ws1,'Prenotazioni');
-  const ws2=XLSX.utils.json_to_sheet(participantRows);ws2['!cols']=Array(12).fill({wch:20});XLSX.utils.book_append_sheet(wb,ws2,'Check-in Hotel');
+  const ws1=XLSX.utils.json_to_sheet(bookingRows);ws1['!cols']=Array(28).fill({wch:20});XLSX.utils.book_append_sheet(wb,ws1,'Prenotazioni');
+  const ws2=XLSX.utils.json_to_sheet(participantRows);ws2['!cols']=Array(15).fill({wch:20});XLSX.utils.book_append_sheet(wb,ws2,'Check-in Hotel');
   XLSX.writeFile(wb,`Winter_Camp_Gestionale_${new Date().toISOString().slice(0,10)}.xlsx`);
 });
 

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260921-2045" />
+  <link rel="stylesheet" href="styles.css?v=20261001-v6" />
 </head>
 <body>
   <main class="site-shell">
@@ -31,8 +31,8 @@
         <p>Compila il modulo, allega la distinta di bonifico e riceverai via email il PDF riepilogativo della prenotazione.</p>
       </div>
       <div class="hero-meta">
-        <div><span>Acconto</span><strong>€20</strong><small>per persona</small></div>
-        <div><span>Conferma</span><strong>PDF</strong><small>via email</small></div>
+        <div><span>Tariffa adulti</span><strong>€50</strong><small>per persona</small></div>
+        <div><span>Bambini</span><strong>€0–50</strong><small>in base all’età</small></div>
       </div>
     </section>
 
@@ -93,35 +93,47 @@
           </div>
         </div>
 
-        <div class="grid two guest-row">
+        <div class="participants-controls">
           <div class="field">
-            <label for="guestCount">Numero totale di persone <span class="required">*</span></label>
-            <select id="guestCount" name="guestCount" required>
-              <option value="" selected disabled>Seleziona</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-              <option value="6">6</option>
-              <option value="7">7</option>
-              <option value="8">8</option>
-              <option value="9">9</option>
-              <option value="10">10</option>
+            <label for="adultCount">Numero adulti <span class="required">*</span></label>
+            <select id="adultCount" name="adultCount" required>
+              <option value="1" selected>1</option>
+              <option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+              <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
             </select>
-            <small>Compreso chi sta effettuando la prenotazione.</small>
+            <small>Comprende la persona che sta compilando il modulo.</small>
           </div>
-          <div class="amount-line" id="amountBox" aria-live="polite">
-            <span>Acconto previsto</span>
-            <strong>€20,00</strong>
-            <small>€20,00 per persona</small>
+          <div class="field">
+            <label for="childCount">Numero bambini</label>
+            <select id="childCount" name="childCount">
+              <option value="0" selected>0</option>
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+              <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+            </select>
+            <small>Per ogni bambino indicherai nome ed età.</small>
           </div>
         </div>
 
-        <div class="field hidden" id="guestDetailsWrap">
-          <label for="guestDetails">Nome, Cognome e Data di nascita degli altri partecipanti <span class="required">*</span></label>
-          <textarea id="guestDetails" name="guestDetails" rows="6" placeholder="Mario Rossi, 01/01/2000"></textarea>
-          <small>Inserisci una persona per riga, senza ripetere chi sta compilando il modulo.</small>
+        <div id="otherAdultsWrap" class="participant-editors hidden">
+          <div class="participant-section-title"><strong>Altri adulti</strong><span>Inserisci i dati degli adulti oltre al referente.</span></div>
+          <div id="otherAdultsList"></div>
+        </div>
+
+        <div id="childrenWrap" class="participant-editors hidden">
+          <div class="participant-section-title"><strong>Bambini</strong><span>L’età indicata determina automaticamente la tariffa.</span></div>
+          <div id="childrenList"></div>
+        </div>
+
+        <div class="pricing-summary" id="pricingSummary" aria-live="polite">
+          <div class="pricing-head"><span>Riepilogo Winter Camp</span><strong id="totalPeopleValue">1 partecipante</strong></div>
+          <div class="pricing-lines">
+            <div><span>Adulti</span><strong id="adultPriceLine">1 × €50,00</strong></div>
+            <div id="childrenFreeLine" class="hidden"><span>Bambini 0–2 anni</span><strong>0 × €0,00</strong></div>
+            <div id="childrenReducedLine" class="hidden"><span>Bambini 3–10 anni</span><strong>0 × €30,00</strong></div>
+            <div id="childrenFullLine" class="hidden"><span>Bambini 11+ anni</span><strong>0 × €50,00</strong></div>
+          </div>
+          <div class="pricing-total"><span>Totale Winter Camp</span><strong id="campTotal">€50,00</strong></div>
+          <div class="pricing-deposit"><span>Acconto da versare ora</span><strong id="amountValue">€20,00</strong><small>€20 per ogni partecipante pagante; i bambini 0–2 anni non versano acconto.</small></div>
         </div>
 
         <div class="divider"></div>
@@ -135,7 +147,7 @@
 
         <div class="payment-grid">
           <div class="payment-copy">
-            <p>Esegui il bonifico con <strong>acconto di €20,00 per persona</strong> e allega la distinta. Senza distinta la prenotazione non potrà essere considerata completa.</p>
+            <p>Esegui il bonifico dell’<strong>acconto indicato nel riepilogo</strong> e allega la distinta. L’acconto è di €20 per ogni partecipante pagante; i bambini da 0 a 2 anni compiuti sono gratuiti e non versano acconto.</p>
           </div>
           <dl class="bank-details">
             <div>
@@ -191,6 +203,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=20260921-2035"></script>
-  <script src="app.js?v=20260921-2045"></script>
+  <script src="app.js?v=20261001-v6"></script>
 </body>
 </html>
