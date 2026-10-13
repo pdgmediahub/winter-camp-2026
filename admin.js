@@ -507,6 +507,244 @@ $('exportButton').addEventListener('click',()=>{
   XLSX.writeFile(wb,`Winter_Camp_Gestionale_${new Date().toISOString().slice(0,10)}.xlsx`);
 });
 
+// ============================================================
+// V7.4 - ESPORTAZIONE PDF
+// Genera un unico report stampabile con:
+// 1) Riepilogo gestionale
+// 2) Prenotazioni
+// 3) Room List
+// 4) Check-in Hotel
+// ============================================================
+
+function pdfMoney(v){
+  return new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(Number(v)||0);
+}
+
+function pdfSafe(v){
+  return String(v??'').replace(/\s+/g,' ').trim();
+}
+
+function addPdfPageFooter(doc){
+  const pages=doc.getNumberOfPages();
+  const generated=new Date().toLocaleString('it-IT');
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i);
+    const w=doc.internal.pageSize.getWidth();
+    const h=doc.internal.pageSize.getHeight();
+    doc.setDrawColor(225,228,233);
+    doc.line(12,h-10,w-12,h-10);
+    doc.setFontSize(7);
+    doc.setTextColor(110,118,130);
+    doc.text(`Winter Camp 2026 · Generato il ${generated}`,12,h-5);
+    doc.text(`Pagina ${i} di ${pages}`,w-12,h-5,{align:'right'});
+  }
+}
+
+function pdfSectionTitle(doc,title,subtitle,y=16){
+  doc.setTextColor(23,32,51);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(16);
+  doc.text(title,12,y);
+  if(subtitle){
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8);
+    doc.setTextColor(105,113,126);
+    doc.text(subtitle,12,y+5);
+  }
+}
+
+function pdfNewSection(doc,title,subtitle){
+  doc.addPage('a4','landscape');
+  pdfSectionTitle(doc,title,subtitle,16);
+  return subtitle?26:22;
+}
+
+function buildPdfSummary(doc){
+  const regs=activeRegistrations();
+  const totalPeople=regs.reduce((s,r)=>s+registrationPeople(r),0);
+  const totalCamp=regs.reduce((s,r)=>s+registrationTotal(r),0);
+  const onlineRegs=regs.filter(r=>r.source!=='manual' && Boolean(r.receipt_path));
+  const manualRegs=regs.filter(r=>r.source==='manual');
+  const bank=onlineRegs.reduce((s,r)=>s+Number(r.deposit_amount||0),0);
+  const cash=manualRegs.reduce((s,r)=>s+Number(r.deposit_amount||0),0);
+  const balance=regs.reduce((s,r)=>s+registrationBalance(r),0);
+  const checked=participants.filter(p=>p.checked_in).length;
+  const assignedRooms=regs.filter(roomAssigned).length;
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(23);
+  doc.setTextColor(17,29,48);
+  doc.text('Winter Camp 2026',12,18);
+  doc.setFontSize(10);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(100,108,120);
+  doc.text('Report gestionale completo · Hotel dei Pini · 6-8 dicembre 2026',12,25);
+
+  const cards=[
+    ['Prenotazioni',String(regs.length)],
+    ['Persone',String(totalPeople)],
+    ['Totale soggiorno',pdfMoney(totalCamp)],
+    ['Acconti bonifico',pdfMoney(bank)],
+    ['Acconti contanti',pdfMoney(cash)],
+    ['Saldo residuo',pdfMoney(balance)],
+    ['Check-in',`${checked}/${participants.length}`],
+    ['Camere assegnate',`${assignedRooms}/${regs.length}`]
+  ];
+
+  const startX=12,startY=35,cardW=65,cardH=22,gap=5;
+  cards.forEach((c,i)=>{
+    const col=i%4,row=Math.floor(i/4);
+    const x=startX+col*(cardW+gap), y=startY+row*(cardH+gap);
+    doc.setFillColor(248,249,251);
+    doc.setDrawColor(226,229,234);
+    doc.roundedRect(x,y,cardW,cardH,3,3,'FD');
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(7);
+    doc.setTextColor(108,116,128);
+    doc.text(c[0].toUpperCase(),x+4,y+7);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(13);
+    doc.setTextColor(24,32,51);
+    doc.text(c[1],x+4,y+16);
+  });
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(10);
+  doc.setTextColor(24,32,51);
+  doc.text('Soggiorno',12,96);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(75,84,98);
+  doc.text('Check-in: 6 dicembre 2026 dalle ore 15:00',12,103);
+  doc.text('Check-out: 8 dicembre 2026 · pranzo incluso',12,109);
+  doc.text('Hotel dei Pini · Porto Empedocle',12,115);
+}
+
+function pdfBookings(doc){
+  let y=pdfNewSection(doc,'Prenotazioni','Anagrafica, situazione economica e provenienza dell’acconto');
+  const rows=registrations.map(r=>[
+    fmtDate(r.created_at),
+    `${pdfSafe(r.first_name)} ${pdfSafe(r.last_name)}`,
+    pdfSafe(r.phone),
+    pdfSafe(r.email),
+    pdfSafe(r.church),
+    String(registrationPeople(r)),
+    String(registrationAdults(r)),
+    String(registrationChildren(r)),
+    pdfMoney(registrationTotal(r)),
+    pdfMoney(r.deposit_amount),
+    pdfMoney(registrationBalance(r)),
+    r.source==='manual'?'Contanti':'Bonifico',
+    paymentLabel(r.payment_status),
+    statusLabel(r.status)
+  ]);
+
+  doc.autoTable({
+    startY:y,
+    head:[['Data','Referente','Cellulare','Email','Chiesa','Pers.','Ad.','Bamb.','Totale','Acconto','Saldo','Acconto','Pagamento','Stato']],
+    body:rows,
+    theme:'grid',
+    styles:{font:'helvetica',fontSize:5.9,cellPadding:1.6,overflow:'linebreak',valign:'middle'},
+    headStyles:{fillColor:[23,36,60],textColor:255,fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[248,249,251]},
+    columnStyles:{
+      0:{cellWidth:20},1:{cellWidth:28},2:{cellWidth:24},3:{cellWidth:36},
+      4:{cellWidth:30},5:{cellWidth:11},6:{cellWidth:9},7:{cellWidth:11},
+      8:{cellWidth:20},9:{cellWidth:20},10:{cellWidth:20},11:{cellWidth:18},
+      12:{cellWidth:22},13:{cellWidth:18}
+    },
+    margin:{left:8,right:8,bottom:15}
+  });
+}
+
+function pdfRoomList(doc){
+  let y=pdfNewSection(doc,'Room List','Assegnazione camere e composizione dei nuclei');
+  const rows=activeRegistrations().map(r=>[
+    `${pdfSafe(r.first_name)} ${pdfSafe(r.last_name)}`,
+    pdfSafe(r.church),
+    String(registrationPeople(r)),
+    pdfSafe(roomParticipantsLabel(r)),
+    pdfSafe(r.room_type||''),
+    pdfSafe(r.room_number||''),
+    roomAssigned(r)?'ASSEGNATA':'DA ASSEGNARE'
+  ]);
+
+  doc.autoTable({
+    startY:y,
+    head:[['Referente','Chiesa','Persone','Partecipanti','Tipologia / esigenza camera','Numero camera','Stato']],
+    body:rows,
+    theme:'grid',
+    styles:{font:'helvetica',fontSize:7,cellPadding:2,overflow:'linebreak',valign:'middle'},
+    headStyles:{fillColor:[23,36,60],textColor:255,fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[248,249,251]},
+    columnStyles:{
+      0:{cellWidth:36},1:{cellWidth:38},2:{cellWidth:14},3:{cellWidth:72},
+      4:{cellWidth:52},5:{cellWidth:32},6:{cellWidth:28}
+    },
+    margin:{left:10,right:10,bottom:15}
+  });
+}
+
+function pdfCheckin(doc){
+  let y=pdfNewSection(doc,'Check-in Hotel','Elenco individuale dei partecipanti');
+  const rows=participants.map(p=>{
+    const r=registrations.find(x=>x.id===p.registration_id);
+    return [
+      r?`${pdfSafe(r.first_name)} ${pdfSafe(r.last_name)}`:'',
+      pdfSafe(p.participant_name),
+      p.participant_type==='child'?'Bambino':'Adulto',
+      p.participant_type==='child'?(Number(p.age_years)>=11?'11+':String(Number(p.age_years))):'Adulto',
+      pdfSafe(r?.church||''),
+      pdfSafe(r?.room_type||''),
+      pdfSafe(r?.room_number||''),
+      p.checked_in?'PRESENTE':'ASSENTE',
+      p.checked_in_at?fmtDate(p.checked_in_at):'',
+      p.issue?'DA VERIFICARE':'',
+      pdfSafe(p.notes||'')
+    ];
+  });
+
+  doc.autoTable({
+    startY:y,
+    head:[['Referente','Partecipante','Tipo','Età','Chiesa','Tipologia camera','Camera','Check-in','Arrivo','Problema','Note']],
+    body:rows,
+    theme:'grid',
+    styles:{font:'helvetica',fontSize:6.4,cellPadding:1.8,overflow:'linebreak',valign:'middle'},
+    headStyles:{fillColor:[23,36,60],textColor:255,fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[248,249,251]},
+    columnStyles:{
+      0:{cellWidth:32},1:{cellWidth:34},2:{cellWidth:18},3:{cellWidth:15},
+      4:{cellWidth:32},5:{cellWidth:38},6:{cellWidth:25},7:{cellWidth:22},
+      8:{cellWidth:28},9:{cellWidth:24},10:{cellWidth:42}
+    },
+    margin:{left:8,right:8,bottom:15}
+  });
+}
+
+function exportManagementPdf(){
+  if(!window.jspdf?.jsPDF){
+    alert('Modulo PDF non disponibile. Ricarica la pagina e riprova.');
+    return;
+  }
+  if(typeof window.jspdf.jsPDF.API.autoTable!=='function'){
+    alert('Modulo tabella PDF non disponibile. Ricarica la pagina e riprova.');
+    return;
+  }
+
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4',compress:true});
+
+  buildPdfSummary(doc);
+  pdfBookings(doc);
+  pdfRoomList(doc);
+  pdfCheckin(doc);
+  addPdfPageFooter(doc);
+
+  doc.save(`Winter_Camp_Gestionale_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+$('exportPdfButton').addEventListener('click',exportManagementPdf);
+
 function showToast(text){
   const el=$('adminToast'); if(!el)return;
   el.textContent=text;el.classList.remove('hidden2');

@@ -84,3 +84,15 @@ input[type="number"]{-moz-appearance:textfield}
 }
 .stat-card.deposit-online:before{background:#5875a4}
 .stat-card.deposit-cash:before{background:#9b7b45}
+
+
+/* V7.4 — Esportazione PDF */
+@media(max-width:760px){
+  .top-actions #exportButton,
+  .top-actions #exportPdfButton{
+    display:inline-flex;
+    padding:9px 10px;
+    font-size:11px;
+    white-space:nowrap;
+  }
+}

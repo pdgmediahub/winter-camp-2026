@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=20260921-v4" />
-  <link rel="stylesheet" href="admin.css?v=20261013-v73" />
+  <link rel="stylesheet" href="admin.css?v=20261013-v74" />
 </head>
 <body class="admin-body">
   <section id="loginView" class="login-screen">
@@ -53,6 +53,7 @@
           <button id="notificationButton" class="notification-button" title="Notifiche"><span>🔔</span><b id="notificationBadge" class="notification-badge hidden2">0</b></button>
           <button id="refreshButton" class="ghost-button">Aggiorna</button>
           <button id="exportButton" class="ghost-button">Scarica Excel</button>
+          <button id="exportPdfButton" class="ghost-button">Scarica PDF</button>
           <button id="newBookingButton" class="accent-button">+ Nuova prenotazione</button>
         </div>
       </header>
@@ -187,7 +188,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="config.js?v=20261013-v71"></script>
-  <script src="admin.js?v=20261013-v73"></script>
+  <script src="admin.js?v=20261013-v74"></script>
 </body>
 </html>
