@@ -132,6 +132,7 @@
           <div class="field"><label>Bambini</label><select id="mChildCount"></select><small>Età e tariffa si gestiscono sotto.</small></div>
           <div class="field"><label>Stato</label><select id="mStatus"><option value="ricevuta">Ricevuta</option><option value="confirmed">Confermata</option><option value="cancelled">Annullata</option></select></div>
           <div class="field"><label>Pagamento</label><select id="mPaymentStatus"><option value="pending">Da verificare</option><option value="confirmed">Confermato</option></select></div>
+          <div class="field"><label>Acconto ricevuto (€) *</label><input id="mManualDeposit" type="number" min="0" step="0.01" inputmode="decimal" required /><small>Per le prenotazioni inserite manualmente puoi indicare l’importo realmente ricevuto. Il saldo residuo si ricalcola automaticamente.</small></div>
           <div class="field"><label>Hotel</label><input id="mHotelName" value="Hotel dei Pini" placeholder="Hotel dei Pini" /></div>
           <div class="field"><label>Camera</label><input id="mRoomNumber" placeholder="Es. 204 / Tripla" /></div>
         </div>
@@ -154,7 +155,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="config.js?v=20261001-v7"></script>
-  <script src="admin.js?v=20261001-v7"></script>
+  <script src="config.js?v=20261013-v71"></script>
+  <script src="admin.js?v=20261013-v71"></script>
 </body>
 </html>

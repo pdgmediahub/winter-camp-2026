@@ -287,21 +287,31 @@ function adminFullParticipantData(){
   x.children.forEach((p,i)=>arr.push({key:`child-${i+1}`,type:'child',...p,name:`${p.first_name} ${p.last_name}`.trim(),age_label:Number(p.age_years)>=11?'11+ anni':`${p.age_years} anni`,nightly_rate:childNightlyRate(p.age_years),price:childPrice(p.age_years)}));
   return arr;
 }
+let manualDepositTouched=false;
 function updateModalSummary(){
   const adults=Math.max(1,Number($('mAdultCount').value||1)), children=Math.max(0,Number($('mChildCount').value||0));
   const childAges=[...$('mParticipantsEditor').querySelectorAll('[data-type="child"] .ap-age')].map(x=>Number(x.value)).filter(Number.isFinite);
   const reduced=childAges.filter(a=>a>=3&&a<=10).length,full=childAges.filter(a=>a>=11).length;
-  const total=adults*adultPrice()+reduced*(CHILD_REDUCED_NIGHTLY*NIGHTS)+full*adultPrice();const deposit=(adults+reduced+full)*DEPOSIT_PER_PAYING_PERSON;
-  $('mPeopleTotal').textContent=adults+children;$('mCampTotal').textContent=euros(total);$('mDeposit').textContent=euros(deposit);if($('mBalance'))$('mBalance').textContent=euros(Math.max(total-deposit,0));
+  const total=adults*adultPrice()+reduced*(CHILD_REDUCED_NIGHTLY*NIGHTS)+full*adultPrice();
+  const suggestedDeposit=(adults+reduced+full)*DEPOSIT_PER_PAYING_PERSON;
+  if(!manualDepositTouched || $('mManualDeposit').value==='') $('mManualDeposit').value=suggestedDeposit.toFixed(2);
+  let deposit=Number($('mManualDeposit').value);
+  if(!Number.isFinite(deposit)||deposit<0) deposit=0;
+  $('mPeopleTotal').textContent=adults+children;
+  $('mCampTotal').textContent=euros(total);
+  $('mDeposit').textContent=euros(deposit);
+  if($('mBalance')) $('mBalance').textContent=euros(Math.max(total-deposit,0));
 }
 $('mAdultCount').addEventListener('change',()=>renderAdminParticipantEditor(collectAdminExtraParticipants().adults.map((x,i)=>({...x,type:'adult',key:`adult-${i+1}`})).concat(collectAdminExtraParticipants().children.map((x,i)=>({...x,type:'child',key:`child-${i+1}`})))));
 $('mChildCount').addEventListener('change',()=>renderAdminParticipantEditor(collectAdminExtraParticipants().adults.map((x,i)=>({...x,type:'adult',key:`adult-${i+1}`})).concat(collectAdminExtraParticipants().children.map((x,i)=>({...x,type:'child',key:`child-${i+1}`})))));
 $('mParticipantsEditor').addEventListener('input',updateModalSummary);$('mParticipantsEditor').addEventListener('change',updateModalSummary);
+$('mManualDeposit').addEventListener('input',()=>{manualDepositTouched=true;updateModalSummary()});
 
 function openBookingModal(mode='new',r=null){
   $('adminBookingForm').reset();clearMsg($('modalMessage'));$('editRegistrationId').value=r?.id||'';$('modalTitle').textContent=mode==='edit'?'Modifica prenotazione':'Nuova prenotazione';$('sendEmailRow').classList.toggle('hidden2',mode==='edit');
-  if(r){$('mFirstName').value=r.first_name||'';$('mLastName').value=r.last_name||'';$('mEmail').value=r.email||'';$('mPhone').value=r.phone||'';$('mMinister').value=r.is_minister?'si':'no';$('mChurch').value=r.church||'';$('mAdultCount').value=String(registrationAdults(r));$('mChildCount').value=String(registrationChildren(r));$('mStatus').value=r.status||'ricevuta';$('mPaymentStatus').value=r.payment_status||'pending';$('mHotelName').value=r.hotel_name||'Hotel dei Pini';$('mRoomNumber').value=r.room_number||'';renderAdminParticipantEditor(adminParticipantDataFor(r));}
-  else{$('mAdultCount').value='1';$('mChildCount').value='0';$('mStatus').value='ricevuta';$('mPaymentStatus').value='pending';$('mHotelName').value='Hotel dei Pini';$('mRoomNumber').value='';renderAdminParticipantEditor([])}
+  manualDepositTouched=!!r;
+  if(r){$('mFirstName').value=r.first_name||'';$('mLastName').value=r.last_name||'';$('mEmail').value=r.email||'';$('mPhone').value=r.phone||'';$('mMinister').value=r.is_minister?'si':'no';$('mChurch').value=r.church||'';$('mAdultCount').value=String(registrationAdults(r));$('mChildCount').value=String(registrationChildren(r));$('mStatus').value=r.status||'ricevuta';$('mPaymentStatus').value=r.payment_status||'pending';$('mManualDeposit').value=Number(r.deposit_amount||0).toFixed(2);$('mHotelName').value=r.hotel_name||'Hotel dei Pini';$('mRoomNumber').value=r.room_number||'';renderAdminParticipantEditor(adminParticipantDataFor(r));}
+  else{$('mAdultCount').value='1';$('mChildCount').value='0';$('mStatus').value='ricevuta';$('mPaymentStatus').value='pending';$('mManualDeposit').value='';$('mHotelName').value='Hotel dei Pini';$('mRoomNumber').value='';renderAdminParticipantEditor([])}
   updateModalSummary();$('bookingModal').classList.remove('hidden2');setTimeout(()=>$('mFirstName').focus(),50);
 }
 function closeBookingModal(){$('bookingModal').classList.add('hidden2')}
@@ -314,14 +324,27 @@ $('adminBookingForm').addEventListener('submit',async e=>{
   const id=$('editRegistrationId').value;const original=id?registrations.find(x=>x.id===id):null;const paymentStatus=$('mPaymentStatus').value;
   const pdata=adminFullParticipantData();const adultCount=Number($('mAdultCount').value),childCount=Number($('mChildCount').value);
   if(pdata.filter(p=>p.type==='adult').length!==adultCount||pdata.filter(p=>p.type==='child').length!==childCount){setMsg($('modalMessage'),'error','Controlla il numero dei partecipanti.');return}
-  const total=pdata.reduce((s,p)=>s+Number(p.price||0),0),deposit=pdata.filter(p=>Number(p.price)>0).length*DEPOSIT_PER_PAYING_PERSON,balance=Math.max(total-deposit,0);
+  const total=pdata.reduce((s,p)=>s+Number(p.price||0),0);
+  const deposit=Number($('mManualDeposit').value);
+  if(!Number.isFinite(deposit)||deposit<0){setMsg($('modalMessage'),'error','Inserisci un acconto valido.');return}
+  if(deposit>total){setMsg($('modalMessage'),'error','L’acconto non può superare il totale del soggiorno.');return}
+  const balance=Math.max(total-deposit,0);
   const details=pdata.slice(1).map(p=>`${p.name}${p.birth_date?`, ${new Date(p.birth_date+'T00:00:00').toLocaleDateString('it-IT')}`:''}${p.type==='child'?` · ${p.age_label}`:''}`).join('\n')||null;
   const payload={first_name:$('mFirstName').value.trim(),last_name:$('mLastName').value.trim(),email:$('mEmail').value.trim().toLowerCase(),phone:$('mPhone').value.trim(),is_minister:$('mMinister').value==='si',church:$('mChurch').value.trim(),guest_count:pdata.length,adult_count:adultCount,child_count:childCount,participants_data:pdata,guest_details:details,total_amount:total,deposit_amount:deposit,balance_amount:balance,status:$('mStatus').value,payment_status:paymentStatus,payment_confirmed_at:paymentStatus==='confirmed'?(original?.payment_confirmed_at||new Date().toISOString()):null,payment_confirmed_by:paymentStatus==='confirmed'?(original?.payment_confirmed_by||currentAdminEmail):null,hotel_name:$('mHotelName').value.trim()||null,room_number:$('mRoomNumber').value.trim()||null,updated_at:new Date().toISOString()};
   $('saveBookingButton').disabled=true;$('saveBookingButton').textContent='Salvataggio…';let savedId=id,error;
   if(id){({error}=await sb.from('registrations').update(payload).eq('id',id));}
   else{payload.source='manual';const result=await sb.from('registrations').insert(payload).select('id').single();error=result.error;savedId=result.data?.id;}
   if(error){setMsg($('modalMessage'),'error','Errore: '+error.message);$('saveBookingButton').disabled=false;$('saveBookingButton').textContent='Salva prenotazione';return}
-  if(!id&&savedId){await invokeConfirmationFunction(savedId,{sendUser:$('mSendEmail').checked,notifyAdmin:true});}
+  if(!id&&savedId){
+    try{
+      const notifyResult=await invokeConfirmationFunction(savedId,{sendUser:$('mSendEmail').checked,notifyAdmin:true});
+      if(notifyResult?.telegram_sent) showToast('Prenotazione salvata · notifica Telegram inviata ad Admin e Pastori.');
+      else showToast('Prenotazione salvata · attenzione: notifica Telegram non confermata.');
+    }catch(notifyError){
+      console.error('Notifica nuova prenotazione manuale non riuscita:',notifyError);
+      showToast('Prenotazione salvata, ma la notifica Telegram non è partita.');
+    }
+  }
   $('saveBookingButton').disabled=false;$('saveBookingButton').textContent='Salva prenotazione';closeBookingModal();await loadAll();
 });
 
