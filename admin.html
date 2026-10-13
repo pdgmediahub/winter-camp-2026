@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=20260921-v4" />
-  <link rel="stylesheet" href="admin.css?v=20261013-v72" />
+  <link rel="stylesheet" href="admin.css?v=20261013-v73" />
 </head>
 <body class="admin-body">
   <section id="loginView" class="login-screen">
@@ -72,7 +72,8 @@
           <article class="stat-card"><span>Persone totali</span><strong id="statPeople">0</strong><small>partecipanti attesi</small></article>
           <article class="stat-card"><span>Check-in</span><strong id="statCheckedIn">0</strong><small id="statCheckinPct">0% arrivati</small></article>
           <article class="stat-card"><span>Valore totale</span><strong id="statCampTotal">€0</strong><small>quote Winter Camp</small></article>
-          <article class="stat-card"><span>Acconti</span><strong id="statDeposit">€0</strong><small>da versare / registrati</small></article>
+          <article class="stat-card deposit-online"><span>Acconti bonifico</span><strong id="statDepositOnline">€0</strong><small id="statDepositOnlineMeta">prenotazioni online con distinta</small></article>
+          <article class="stat-card deposit-cash"><span>Acconti contanti</span><strong id="statDepositCash">€0</strong><small id="statDepositCashMeta">inserimenti manuali</small></article>
           <article class="stat-card"><span>Saldo residuo</span><strong id="statBalance">€0</strong><small>totale meno acconti</small></article>
         </div>
 
@@ -187,6 +188,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="config.js?v=20261013-v71"></script>
-  <script src="admin.js?v=20261013-v72"></script>
+  <script src="admin.js?v=20261013-v73"></script>
 </body>
 </html>

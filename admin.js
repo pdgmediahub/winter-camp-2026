@@ -128,7 +128,14 @@ function activeParticipants(){
 function renderDashboard(){
   const regs=activeRegistrations();
   const people=regs.reduce((s,r)=>s+registrationPeople(r),0);
-  const deposits=regs.reduce((s,r)=>s+Number(r.deposit_amount||0),0);
+  // V7.3 — separazione acconti per origine:
+  // - prenotazioni online/con distinta = bonifico
+  // - prenotazioni inserite manualmente = contanti
+  const onlineRegs=regs.filter(r=>r.source!=='manual' && Boolean(r.receipt_path));
+  const manualRegs=regs.filter(r=>r.source==='manual');
+  const depositsOnline=onlineRegs.reduce((s,r)=>s+Number(r.deposit_amount||0),0);
+  const depositsCash=manualRegs.reduce((s,r)=>s+Number(r.deposit_amount||0),0);
+  const deposits=depositsOnline+depositsCash;
   const campTotal=regs.reduce((s,r)=>s+registrationTotal(r),0);
   const balanceTotal=regs.reduce((s,r)=>s+registrationBalance(r),0);
   const parts=activeParticipants();
@@ -139,7 +146,10 @@ function renderDashboard(){
   $('statCheckedIn').textContent=present;
   $('statCheckinPct').textContent=`${pct}% arrivati`;
   $('statCampTotal').textContent=euros(campTotal);
-  $('statDeposit').textContent=euros(deposits);
+  if($('statDepositOnline'))$('statDepositOnline').textContent=euros(depositsOnline);
+  if($('statDepositCash'))$('statDepositCash').textContent=euros(depositsCash);
+  if($('statDepositOnlineMeta'))$('statDepositOnlineMeta').textContent=`${onlineRegs.length} ${onlineRegs.length===1?'prenotazione online':'prenotazioni online'} con distinta`;
+  if($('statDepositCashMeta'))$('statDepositCashMeta').textContent=`${manualRegs.length} ${manualRegs.length===1?'inserimento manuale':'inserimenti manuali'} · contanti`;
   if($('statBalance'))$('statBalance').textContent=euros(balanceTotal);
   $('progressRing').style.setProperty('--pct',`${pct*3.6}deg`);
   $('progressRingText').textContent=`${pct}%`;
@@ -472,7 +482,7 @@ window.deleteBooking=deleteBooking;
 
 $('exportButton').addEventListener('click',()=>{
   const bookingRows=registrations.map(r=>({
-    'Data prenotazione':fmtDate(r.created_at),'Nome':r.first_name,'Cognome':r.last_name,'Email':r.email,'Cellulare':r.phone,'Ministro':r.is_minister?'Sì':'No','Chiesa di appartenenza':r.church,'Adulti':registrationAdults(r),'Bambini':registrationChildren(r),'Persone totali':registrationPeople(r),'Bambini 0-2':parseParticipantData(r).filter(p=>p.type==='child'&&Number(p.age_years)<=2).length,'Bambini 3-10':parseParticipantData(r).filter(p=>p.type==='child'&&Number(p.age_years)>=3&&Number(p.age_years)<=10).length,'Bambini 11+':parseParticipantData(r).filter(p=>p.type==='child'&&Number(p.age_years)>=11).length,'Altri partecipanti':r.guest_details||'','Notti':2,'Totale soggiorno €':registrationTotal(r),'Acconto €':Number(r.deposit_amount||0),'Saldo residuo €':registrationBalance(r),'Stato':statusLabel(r.status),'Origine':r.source==='manual'?'Manuale':'Online','Email PDF inviata':r.confirmation_email_sent_at?fmtDate(r.confirmation_email_sent_at):'No','N. invii email':Number(r.confirmation_email_count||0),'Pagamento':paymentLabel(r.payment_status),'Pagamento confermato il':r.payment_confirmed_at?fmtDate(r.payment_confirmed_at):'','Confermato da':r.payment_confirmed_by||'','Hotel':r.hotel_name||'','Tipologia camera':r.room_type||'','Camera':r.room_number||'','Distinta':r.receipt_path||''
+    'Data prenotazione':fmtDate(r.created_at),'Nome':r.first_name,'Cognome':r.last_name,'Email':r.email,'Cellulare':r.phone,'Ministro':r.is_minister?'Sì':'No','Chiesa di appartenenza':r.church,'Adulti':registrationAdults(r),'Bambini':registrationChildren(r),'Persone totali':registrationPeople(r),'Bambini 0-2':parseParticipantData(r).filter(p=>p.type==='child'&&Number(p.age_years)<=2).length,'Bambini 3-10':parseParticipantData(r).filter(p=>p.type==='child'&&Number(p.age_years)>=3&&Number(p.age_years)<=10).length,'Bambini 11+':parseParticipantData(r).filter(p=>p.type==='child'&&Number(p.age_years)>=11).length,'Altri partecipanti':r.guest_details||'','Notti':2,'Totale soggiorno €':registrationTotal(r),'Acconto €':Number(r.deposit_amount||0),'Saldo residuo €':registrationBalance(r),'Stato':statusLabel(r.status),'Origine':r.source==='manual'?'Manuale':'Online','Tipo acconto':r.source==='manual'?'Contanti':'Bonifico / Distinta','Email PDF inviata':r.confirmation_email_sent_at?fmtDate(r.confirmation_email_sent_at):'No','N. invii email':Number(r.confirmation_email_count||0),'Pagamento':paymentLabel(r.payment_status),'Pagamento confermato il':r.payment_confirmed_at?fmtDate(r.payment_confirmed_at):'','Confermato da':r.payment_confirmed_by||'','Hotel':r.hotel_name||'','Tipologia camera':r.room_type||'','Camera':r.room_number||'','Distinta':r.receipt_path||''
   }));
   const participantRows=participants.map(p=>{
     const r=registrations.find(x=>x.id===p.registration_id);

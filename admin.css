@@ -69,3 +69,18 @@ input[type="number"]{-moz-appearance:textfield}
   .room-save-button{width:100%}
   .room-toolbar{gap:8px}
 }
+
+
+/* V7.3 — Acconti separati in Dashboard */
+.stat-card.deposit-online,
+.stat-card.deposit-cash{position:relative;overflow:hidden}
+.stat-card.deposit-online:before,
+.stat-card.deposit-cash:before{
+  content:"";
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:3px;
+  border-radius:3px 0 0 3px;
+}
+.stat-card.deposit-online:before{background:#5875a4}
+.stat-card.deposit-cash:before{background:#9b7b45}
