@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=20260921-v4" />
-  <link rel="stylesheet" href="admin.css?v=20260921-v4" />
+  <link rel="stylesheet" href="admin.css?v=20261013-v72" />
 </head>
 <body class="admin-body">
   <section id="loginView" class="login-screen">
@@ -34,6 +34,7 @@
       <nav class="nav-list">
         <button class="nav-item active" data-view="dashboard"><span>◫</span> Dashboard</button>
         <button class="nav-item" data-view="bookings"><span>⌁</span> Prenotazioni</button>
+        <button class="nav-item" data-view="rooms"><span>▣</span> Room List</button>
         <button class="nav-item" data-view="checkin"><span>✓</span> Check-in Hotel</button>
       </nav>
       <div class="sidebar-bottom">
@@ -101,6 +102,35 @@
         </table></div></div>
       </section>
 
+
+      <section id="roomsView" class="view-panel">
+        <div class="room-list-head">
+          <div>
+            <span class="section-kicker">HOTEL DEI PINI</span>
+            <h3>Room List</h3>
+            <p>Tutte le prenotazioni entrano automaticamente qui. Inserisci liberamente tipologia e numero camera, anche con più camere nella stessa prenotazione.</p>
+          </div>
+          <div class="room-list-mini-stats">
+            <div><span>Prenotazioni</span><strong id="roomStatBookings">0</strong></div>
+            <div><span>Assegnate</span><strong id="roomStatAssigned">0</strong></div>
+            <div><span>Da assegnare</span><strong id="roomStatUnassigned">0</strong></div>
+            <div><span>Persone</span><strong id="roomStatPeople">0</strong></div>
+          </div>
+        </div>
+
+        <div class="toolbar-card room-toolbar">
+          <div class="search-box"><span>⌕</span><input id="roomSearch" placeholder="Cerca referente, partecipante, chiesa, camera…" /></div>
+          <select id="roomChurchFilter"><option value="">Tutte le chiese</option></select>
+          <select id="roomAssignmentFilter">
+            <option value="">Tutte</option>
+            <option value="assigned">Camere assegnate</option>
+            <option value="unassigned">Da assegnare</option>
+          </select>
+        </div>
+
+        <div id="roomList" class="room-list"></div>
+      </section>
+
       <section id="checkinView" class="view-panel">
         <div class="checkin-head">
           <div><span class="section-kicker">ARRIVI HOTEL</span><h3>Check-in partecipanti</h3><p>Ogni persona viene gestita singolarmente. Il gruppo mostra l'avanzamento in tempo reale.</p></div>
@@ -132,9 +162,10 @@
           <div class="field"><label>Bambini</label><select id="mChildCount"></select><small>Età e tariffa si gestiscono sotto.</small></div>
           <div class="field"><label>Stato</label><select id="mStatus"><option value="ricevuta">Ricevuta</option><option value="confirmed">Confermata</option><option value="cancelled">Annullata</option></select></div>
           <div class="field"><label>Pagamento</label><select id="mPaymentStatus"><option value="pending">Da verificare</option><option value="confirmed">Confermato</option></select></div>
-          <div class="field"><label>Acconto ricevuto (€) *</label><input id="mManualDeposit" type="number" min="0" step="0.01" inputmode="decimal" required /><small>Per le prenotazioni inserite manualmente puoi indicare l’importo realmente ricevuto. Il saldo residuo si ricalcola automaticamente.</small></div>
+          <div class="field"><label>Acconto ricevuto (€) *</label><input id="mManualDeposit" type="text" inputmode="decimal" autocomplete="off" placeholder="Es. 100,00" required /><small>Scrivi direttamente l’importo ricevuto, ad esempio <b>100</b> oppure <b>100,00</b>. Il saldo residuo si ricalcola automaticamente.</small></div>
           <div class="field"><label>Hotel</label><input id="mHotelName" value="Hotel dei Pini" placeholder="Hotel dei Pini" /></div>
-          <div class="field"><label>Camera</label><input id="mRoomNumber" placeholder="Es. 204 / Tripla" /></div>
+          <div class="field"><label>Tipologia camera</label><input id="mRoomType" placeholder="Es. Singola, Matrimoniale, Tripla, 2 matrimoniali…" /></div>
+          <div class="field"><label>Numero camera</label><input id="mRoomNumber" placeholder="Es. 204 oppure 204 + 205" /></div>
         </div>
         <div id="mParticipantsEditor" class="admin-participant-editor"></div>
         <div class="modal-summary"><span>Persone totali <strong id="mPeopleTotal">0</strong></span><span>Totale soggiorno <strong id="mCampTotal">€0,00</strong></span><span>Acconto <strong id="mDeposit">€0,00</strong></span><span>Saldo residuo <strong id="mBalance">€0,00</strong></span></div>
@@ -156,6 +187,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="config.js?v=20261013-v71"></script>
-  <script src="admin.js?v=20261013-v71"></script>
+  <script src="admin.js?v=20261013-v72"></script>
 </body>
 </html>
