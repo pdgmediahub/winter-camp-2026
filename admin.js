@@ -380,13 +380,14 @@ function adminFullParticipantData(){
   return arr;
 }
 let manualDepositTouched=false;
+// V7.4.1: dopo il primo intervento dell'Admin, il campo acconto può restare vuoto mentre viene riscritto.
 function updateModalSummary(){
   const adults=Math.max(1,Number($('mAdultCount').value||1)), children=Math.max(0,Number($('mChildCount').value||0));
   const childAges=[...$('mParticipantsEditor').querySelectorAll('[data-type="child"] .ap-age')].map(x=>Number(x.value)).filter(Number.isFinite);
   const reduced=childAges.filter(a=>a>=3&&a<=10).length,full=childAges.filter(a=>a>=11).length;
   const total=adults*adultPrice()+reduced*(CHILD_REDUCED_NIGHTLY*NIGHTS)+full*adultPrice();
   const suggestedDeposit=(adults+reduced+full)*DEPOSIT_PER_PAYING_PERSON;
-  if(!manualDepositTouched || $('mManualDeposit').value==='') $('mManualDeposit').value=suggestedDeposit.toFixed(2).replace('.',',');
+  if(!manualDepositTouched) $('mManualDeposit').value=suggestedDeposit.toFixed(2).replace('.',',');
   let deposit=parseMoneyInput($('mManualDeposit').value);
   if(!Number.isFinite(deposit)||deposit<0) deposit=0;
   $('mPeopleTotal').textContent=adults+children;
